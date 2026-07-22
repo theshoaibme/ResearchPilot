@@ -1,6 +1,6 @@
-# Comprehensive Inventory of Volumetric and Whole-Body Medical Foundation Models
+# Comprehensive Inventory of Volumetric and Whole-Body Medical Foundation Models and Datasets
 
-This report catalogs and details the key research publications, methodologies, datasets, and diagnostic purposes of existing "whole-body," "pan-organ," and "multi-organ" medical imaging foundation models available in current scientific literature.
+This report catalogs and details the key research publications, methodologies, datasets, and diagnostic purposes of existing "whole-body," "pan-organ," and "multi-organ" medical imaging foundation models and clinical datasets available in current scientific literature.
 
 ---
 
@@ -44,11 +44,71 @@ This report catalogs and details the key research publications, methodologies, d
 
 ---
 
-## 2. Comparative Matrix
+## 2. Benchmark Datasets for Whole-Body/Multi-Organ AI
+These standardized public datasets are used to pre-train and validate generalist foundation models.
+
+### 3DLAND (3D Lesion Abdominal Anomaly Localization Dataset)
+*   **Paper Reference:** [3DLAND Paper (arXiv:2602.12820)](https://arxiv.org/abs/2602.12820)
+*   **Modality:** Abdominal CT (6,000+ contrast-enhanced volumes).
+*   **Organ Targets:** 7 abdominal organs (liver, kidneys, pancreas, spleen, stomach, gallbladder, and lesions).
+*   **Purpose:** Large-scale anomaly localization and multi-organ lesion association tracking.
+
+### LesionLocator (Zero-Shot Universal Segmentation)
+*   **Paper Reference:** [LesionLocator Paper (arXiv:2502.20985)](https://arxiv.org/abs/2502.20985)
+*   **Modality:** 3D Whole-body CT/MRI (23,000+ scans).
+*   **Organ Targets:** Multi-organ lesions and longitudinal tumor trajectories.
+*   **Purpose:** Zero-shot longitudinal tracking and Dense spatial prompting.
+
+### TotalSegmentator (CT)
+*   **Paper Reference:** [TotalSegmentator Paper (arXiv:2208.05868)](https://arxiv.org/abs/2208.05868)
+*   **Modality:** 3D CT (1,228 volumes).
+*   **Organ Targets:** 104 distinct anatomical structures.
+*   **Purpose:** The standard benchmark for general whole-body anatomical segmentation.
+
+### TotalSegmentator-MRI
+*   **Paper Reference:** [TotalSegmentator MRI Paper (arXiv:2405.19492)](https://arxiv.org/abs/2405.19492)
+*   **Modality:** 3D MRI (sequence-independent).
+*   **Organ Targets:** 59 to 80 anatomical soft-tissue structures.
+*   **Purpose:** Extends whole-body segmentation benchmarks to magnetic resonance scans.
+
+### AMOS (Abdominal Multi-Organ Segmentation)
+*   **Paper Reference:** [AMOS Paper (arXiv:2206.08023)](https://arxiv.org/abs/2206.08023)
+*   **Modality:** CT (500 volumes) and MRI (100 volumes).
+*   **Organ Targets:** 15 abdominal organs.
+*   **Purpose:** Multi-modal abdominal target segmentation validation.
+
+---
+
+## 3. Disease Detection, Prognosis, and Treatment Planning Frameworks
+Recent publications linking self-supervised foundation models with downstream clinical decisions.
+
+### FACT: Assessing Cancer Tissue Margins with Mass Spectrometry
+*   **Publication Reference:** [FACT Paper (arXiv:2504.11519)](https://arxiv.org/abs/2504.11519)
+*   **Purpose:** A specialized oncology foundation model utilizing machine learning over mass spectrometry profiles to identify real-time tumor boundary margins during surgery.
+
+### MAISI: Medical AI for Synthetic Imaging
+*   **Publication Reference:** [MAISI Paper (arXiv:2409.11169)](https://arxiv.org/abs/2409.11169)
+*   **Purpose:** A volumetric synthetic generator utilizing latent diffusion to synthesize target CT scans and artificial organ structures to populate sparse training datasets.
+
+### TRACER: Trajectory-Aware Clinical Risk Prediction
+*   **Publication Reference:** [TRACER Paper (arXiv:2607.18270)](https://arxiv.org/abs/2607.18270)
+*   **Purpose:** Utilizes severity-grounded clinical knowledge graphs and Retrieval-Augmented Generation (RAG) to model patient trajectory profiles, predicting readmission risks and clinical severity.
+
+### MultiGradICON: Multi-Modal Registration Foundation Model
+*   **Publication Reference:** [MultiGradICON Paper (arXiv:2406.02234)](https://arxiv.org/abs/2406.02234)
+*   **Purpose:** Registers volumetric CT and MRI studies across diverse structures (brain, lung, knee, liver) to align historical tumor growth, assisting in radiation oncology and treatment planning.
+
+### SleepFM: Multi-Modal Sleep Biosignal Foundation Model
+*   **Publication Reference:** [SleepFM Paper (arXiv:2404.03210)](https://arxiv.org/abs/2404.03210)
+*   **Purpose:** Multi-modal contrastive pre-training aligning sleep electroencephalograms (EEG) with clinical classifications to forecast diagnostic trajectories and sleep pathologies.
+
+---
+
+## 4. Comparative Matrix
 
 The table below maps the functional properties of existing whole-body frameworks:
 
-| Model / Paper | Dimensionality | Modality Scope | Anatomical Target | Core Architectural Pretext Task |
+| Model / Paper | Dimensionality | Modality Scope | Anatomical Target | Core Pretext Task / Focus |
 | :--- | :--- | :--- | :--- | :--- |
 | **SegVol** | 3D | CT | Whole-Body (200+ structures) | Prompt-guided visual alignment |
 | **CT-FM** | 3D | CT | Whole-Body | Volumetric Contrastive Learning |

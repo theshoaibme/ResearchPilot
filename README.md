@@ -1,21 +1,7 @@
-
-
-**Daffodil International University**  
-**Department of Computer Science and Engineering**  
-**Course Code:** CSE499	**Title:** FYDP (Title Defense)
-
-**Proposal Approval Form**
-
-| 1st Member information |  |  |  |
-| ----- | :---- | :---- | :---- |
-| **Student ID:** | **0242310005101484** | **Student Name:** | **MD Shoaib Khan** |
-| **2nd Member information**  |  |  |  |
-| **Student ID:** | **0242310005101412** | **Student Name:** | **Asmita Rahman** |
-| **Semester:** | **Spring 2026** | **Date:** | **18.02.2026** |
-| **III. Proposed Title:** | **The Pan-Organ Diagnostic Paradigm: A High-Capacity Foundation Model for Multi-Modality Medical Screening** |  |  |
+**Proposed Title:** | **The Pan-Organ Diagnostic Paradigm: A High-Capacity Foundation Model for Multi-Modality Medical Screening** |  |  |
 | **IV. Updated Title (**If there is any update**):** |  |  |  |
 |  This is the approval for the Final Year Design Project (FYDP) proposal and title submitted by the above-mentioned student who is from the Department of CSE under my supervision. Upon thorough review and evaluation, it is my professional opinion that the **proposed project title *\[mentioned in Sec III and IV\]*** is both relevant and aligned with the academic goals and standards of our department. I (Supervisor) have endorsed the proposed proposal and title. Under our department's guidelines, the student has fulfilled all the necessary prerequisites and will attach this Proposal Approval Form to their FYDP Title Phase Evaluation Report. |  |  |  |
-| **Supervisor Name:**  | **Dr. Md. Ali Hossain** |  |  |
+| **Supervisor Name:**  | **[Supervisor Name]** |  |  |
 | **Supervisor Designation:**  | **Associate Professor**   |  |  |
 | **Approved by:  \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Supervisor Signature with Date** |  |  |  |
 

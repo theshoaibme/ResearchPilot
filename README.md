@@ -1,9 +1,8 @@
-**Proposed Title:** | **The Pan-Organ Diagnostic Paradigm: A High-Capacity Foundation Model for Multi-Modality Medical Screening** |  |  |
+| | | | |
+| ----- | :---- | :---- | :---- |
+| **III. Proposed Title:** | **The Pan-Organ Diagnostic Paradigm: A High-Capacity Foundation Model for Multi-Modality Medical Screening** |  |  |
 | **IV. Updated Title (**If there is any update**):** |  |  |  |
 |  This is the approval for the Final Year Design Project (FYDP) proposal and title submitted by the above-mentioned student who is from the Department of CSE under my supervision. Upon thorough review and evaluation, it is my professional opinion that the **proposed project title *\[mentioned in Sec III and IV\]*** is both relevant and aligned with the academic goals and standards of our department. I (Supervisor) have endorsed the proposed proposal and title. Under our department's guidelines, the student has fulfilled all the necessary prerequisites and will attach this Proposal Approval Form to their FYDP Title Phase Evaluation Report. |  |  |  |
-| **Supervisor Name:**  | **[Supervisor Name]** |  |  |
-| **Supervisor Designation:**  | **Associate Professor**   |  |  |
-| **Approved by:  \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_ Supervisor Signature with Date** |  |  |  |
 
 # **V. Detailed Proposal**
 
@@ -11,7 +10,7 @@
 
 The primary objective is to develop **"Pan-Organ Net,"** a high-capacity, transformer-based foundation model capable of performing zero-shot and few-shot diagnostic tasks across multiple human organs and imaging modalities (MRI, CT, X-ray, and Ultrasound). Unlike traditional "narrow" AI that focuses on a single pathology, this project aims to solve the problem of **model fragmentation** in clinical settings by creating a unified feature extractor that generalizes across diverse anatomical structures.
 
-# 
+#
 
 # **2\. Motivation**
 

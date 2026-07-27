@@ -1,0 +1,12 @@
+# Datasets Directory (ignore large medical image binaries)
+datasets/
+datasets/*
+
+# Python & Temporary Files
+__pycache__/
+*.pyc
+*.zip
+*.tar
+*.gz
+*.kaggle-partial
+scratch/

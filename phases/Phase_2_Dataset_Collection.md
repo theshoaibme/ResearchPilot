@@ -7,7 +7,7 @@
 To train and validate **Pan-Organ Net** across all 7 medical specialist domains and 8 disease categories, Phase 2 aggregates **5 primary multi-modal, multi-organ datasets** comprising over 500,000 patient examinations:
 
 ```
-├── TotalSegmentator Dataset (v2)
+├── TotalSegmentator Dataset
 │   ├── Modality: 3D Computed Tomography (CT)
 │   ├── Scale: 1,204 high-resolution CT volumes
 │   ├── Target: 117 anatomical organs, bones, vessels, and tissue structures
@@ -75,5 +75,6 @@ To train and validate **Pan-Organ Net** across all 7 medical specialist domains 
 
 ## 4. Phase 2 Verification & Data Readiness Status
 
-- **Completeness Check:** Covers all 7 medical specialist domains, 8 disease categories, 4 imaging modalities (CT, MRI, X-Ray, US), and 5 benchmark datasets.
+- **Structured CSV Dataset Catalog:** Generated at [Pan_Organ_Medical_Datasets_Catalog.csv](Pan_Organ_Medical_Datasets_Catalog.csv) (12 structured columns with direct download links).
+- **Completeness Check:** Covers all 7 medical specialist domains, 8 disease categories, 4 imaging modalities (CT, MRI, X-Ray, US), and 7 multi-modal datasets.
 - **Phase 3 Integration:** Preprocessed arrays (NIfTI / DICOM) are handed over to Phase 3 for spatial resampling and intensity normalization.

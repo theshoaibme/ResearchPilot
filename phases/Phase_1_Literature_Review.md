@@ -6,7 +6,7 @@
 
 Modern diagnostic radiology requires evaluating complex, multi-system pathology across diverse imaging modalities (MRI, CT, X-Ray, Ultrasound). Current medical computer vision models suffer from **Architectural Fragmentation** ("One Model, One Task"), which restricts inference to single organs or isolated disease classifications. 
 
-This phase delivers an exhaustive synthesis of state-of-the-art (SOTA) medical foundation architectures, identifies critical clinical gaps, and maps our proposed **Pan-Organ Net** foundation model to align with 7 major medical specialties and 8 comprehensive disease taxonomies.
+This phase delivers an exhaustive synthesis of state-of-the-art (SOTA) medical foundation architectures, identifies critical clinical gaps, and maps our proposed **Pan-Organ Net** foundation model to align with **7 major medical specialties**, **8 comprehensive disease taxonomies**, and explicit **quantitative evaluation metrics** (Accuracy, Sensitivity, Specificity, AUC-ROC, Dice Coefficient).
 
 ---
 
@@ -34,15 +34,15 @@ To ensure **Pan-Organ Net** produces multi-organ diagnostic representations that
 
 ### Specialist-to-Organ & Disease Matrix
 
-| # | Medical Specialist | Target Organ Systems | Covered Disease Categories (Out of 8) | Primary Imaging Modalities |
-| :-: | :--- | :--- | :--- | :--- |
-| **1** | **Neurologist & Neurosurgeon** | Brain, Spine, Central & Peripheral Nervous System | Neurodegenerative, Demyelinating, Epileptic, Traumatic | MRI (T1w, T2w, FLAIR, dTI), CT (Head) |
-| **2** | **Oncologist & Surgical Oncologist** | Pan-Organ / Systemic (Brain, Lungs, Liver, Kidneys, Bones) | Neoplastic (Benign & Malignant Tumors/Metastases) | Multi-Parametric MRI, Contrast CT, PET-CT |
-| **3** | **Cardiologist & Vascular Surgeon** | Heart, Aorta, Peripheral Blood Vessels | Vascular (Aneurysms, Thrombosis, Stenosis, Ischemia) | CT Angiography (CTA), Cardiac MRI, Doppler US |
-| **4** | **Infectious Disease Specialist** | Systemic Multi-Organ (Lungs, Liver, Brain, Blood) | Infectious (Bacterial, Viral, Fungal, Parasitic Infiltrates) | Chest X-Ray, Abdominal CT, Brain MRI |
-| **5** | **Rheumatologist & Immunologist** | Systemic (Joints, Kidneys, Vasculature, Soft Tissue) | Autoimmune (Lupus Nephritis, Rheumatoid Arthritis, Vasculitis) | Musculoskeletal MRI, Ultrasound, CT |
-| **6** | **Pulmonologist (Thoracic Specialist)** | Lungs, Tracheobronchial Tree, Pleura, Thoracic Cage | Infectious, Neoplastic, Traumatic, Interstitial | Chest X-Ray, High-Resolution CT (HRCT) |
-| **7** | **Radiologist (Diagnostic & Interventional)** | Pan-Organ Whole-Body (Brain, Lungs, Liver, Kidneys, Cardiovascular) | **All 8 Categories** (Full Taxonomy Screening) | MRI, CT, X-Ray, Ultrasound |
+| # | Medical Specialist | Target Organ Systems | Covered Disease Categories (Out of 8) | Primary Imaging Modalities | Clinical Decision Support Output |
+| :-: | :--- | :--- | :--- | :--- | :--- |
+| **1** | **Neurologist & Neurosurgeon** | Brain, Spine, Central & Peripheral Nervous System | Neurodegenerative, Demyelinating, Epileptic, Traumatic | MRI (T1w, T2w, FLAIR, dTI), CT (Head) | Lesion volume, white matter hyperintensity burden, midline shift mm |
+| **2** | **Oncologist & Surgical Oncologist** | Pan-Organ / Systemic (Brain, Lungs, Liver, Kidneys, Bones) | Neoplastic (Benign & Malignant Tumors/Metastases) | Multi-Parametric MRI, Contrast CT, PET-CT | RECIST 1.1 tumor burden, TNM staging recommendations, biopsy target |
+| **3** | **Cardiologist & Vascular Surgeon** | Heart, Aorta, Peripheral Blood Vessels | Vascular (Aneurysms, Thrombosis, Stenosis, Ischemia) | CT Angiography (CTA), Cardiac MRI, Doppler US | Ejection fraction, luminal stenosis %, aneurysm diameter (cm) |
+| **4** | **Infectious Disease Specialist** | Systemic Multi-Organ (Lungs, Liver, Brain, Blood) | Infectious (Bacterial, Viral, Fungal, Parasitic Infiltrates) | Chest X-Ray, Abdominal CT, Brain MRI | Consolidation volume %, abscess localization, organ involvement score |
+| **5** | **Rheumatologist & Immunologist** | Systemic (Joints, Kidneys, Vasculature, Soft Tissue) | Autoimmune (Lupus Nephritis, Rheumatoid Arthritis, Vasculitis) | Musculoskeletal MRI, Ultrasound, CT | Joint erosion index, renal parenchymal attenuation, vessel wall thickness |
+| **6** | **Pulmonologist (Thoracic Specialist)** | Lungs, Tracheobronchial Tree, Pleura, Thoracic Cage | Infectious, Neoplastic, Traumatic, Interstitial | Chest X-Ray, High-Resolution CT (HRCT) | LUNA nodule malignancy risk %, emphysema severity, pleural effusion vol |
+| **7** | **Radiologist (Diagnostic & Interventional)** | Pan-Organ Whole-Body (Brain, Lungs, Liver, Kidneys, Cardiovascular) | **All 8 Categories** (Full Taxonomy Screening) | MRI, CT, X-Ray, Ultrasound | Full Pan-Organ Heatmap (Grad-CAM), Multi-Organ Dice Segmentation, Action Plan |
 
 ---
 
@@ -74,7 +74,25 @@ To ensure **Pan-Organ Net** produces multi-organ diagnostic representations that
 
 ---
 
-## 5. Identified Architectural & Clinical Gaps
+## 5. Quantitative Benchmarking & Evaluation Protocol
+
+To rigorously evaluate **Pan-Organ Net** against existing models across all 7 specialist domains, the literature review establishes a standardized quantitative evaluation protocol:
+
+1. **Segmentation Integrity:**
+   - **Dice Similarity Coefficient (DSC):** Measures spatial overlap of predicted pan-organ anatomical boundaries.
+   - **95th Percentile Hausdorff Distance (HD95):** Evaluates boundary distance error in millimeters ($mm$).
+
+2. **Diagnostic Accuracy Metrics:**
+   - **Area Under the Receiver Operating Characteristic Curve (AUC-ROC):** Primary metric for multi-class pathology screening.
+   - **Sensitivity (Recall) & Specificity:** Ensures high sensitivity for early screening while maintaining specificity to reduce false alarms.
+   - **Accuracy & F1-Score:** Overall classification reliability across balanced and imbalanced cohorts.
+
+3. **Robustness under Simulated Incomplete Input (MNAR):**
+   - **Relative Degradation Rate ($\Delta_{MNAR}$):** Evaluates stability when input scan anatomical coverage is dropped from 0% to 50%.
+
+---
+
+## 6. Identified Architectural & Clinical Gaps
 
 1. **Dominant-Organ Shortcutting Gap:** Standard uniform random masking enables network decoders to cheat by learning background cavity shortcuts (e.g. abdominal fat, ribcage bones), skipping small organ boundaries or subtle lesions.
 2. **Missing Not at Random (MNAR) Vulnerability Gap:** Hospital acquisitions frequently provide truncated volumetric scans (e.g., dedicated liver scan vs. full torso). Existing foundation models suffer up to a **25.3% performance drop** under partial anatomical inputs.
@@ -82,7 +100,7 @@ To ensure **Pan-Organ Net** produces multi-organ diagnostic representations that
 
 ---
 
-## 6. Phase 1 Verification & Next Steps
+## 7. Phase 1 Verification & Next Steps
 
-- **Verification:** Literature synthesis, baseline comparative matrix, specialist mapping, and disease taxonomy alignment are fully verified.
-- **Phase 2 Integration:** Prepares dataset ingestion for TotalSegmentator, MIMIC-CXR, and TCIA cohorts to fulfill the 7 specialist diagnostic target categories.
+- **Verification:** Literature synthesis, baseline comparative matrix, specialist mapping, 8 disease taxonomies, clinical decision support outputs, and quantitative evaluation protocols are 100% complete and verified.
+- **Phase 2 Transition:** Feeds dataset ingestion criteria for TotalSegmentator, MIMIC-CXR, and TCIA cohorts directly into Phase 2.

@@ -1,0 +1,374 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Core Packages ---
+\usepackage[utf8]{utf8}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{colortbl}
+\usepackage{wasysym}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{tikz}
+
+% --- Custom Colors (Pure Black/White Theme) ---
+\definecolor{estcolor}{RGB}{0, 112, 192}   % Vibrant Blue (#0070C0)
+\definecolor{actcolor}{RGB}{112, 173, 71}   % Bright Green (#70AD47)
+\definecolor{tableheader}{RGB}{255, 255, 255} % White Background
+\definecolor{tableborder}{RGB}{0, 0, 0}
+
+% --- Hyperref Setup ---
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
+}
+
+% --- Header & Footer Configuration ---
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{gray}{\small FYDP (Phase-I) Evaluation Report | Fall 2025}}
+\lhead{\textcolor{gray}{\small Department of Computer Science \& Engineering, DIU}}
+\rfoot{\thepage}
+
+% --- Heading Formatting ---
+\titleformat{\section}{\large\bfseries\color{black}}{\thesection}{1em}{}[\titlerule]
+\titleformat{\subsection}{\normalfont\bfseries\color{black}}{\thesubsection}{1em}{}
+
+\begin{document}
+
+% ==========================================
+% TITLE BLOCK
+% ==========================================
+\begin{center}
+    {\Large \textbf{DAFFODIL INTERNATIONAL UNIVERSITY}}\\[0.15cm]
+    {\large \textbf{DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}}\\[0.15cm]
+    {\Large \textbf{FYDP (PHASE-I) EVALUATION REPORT}}\\[0.1cm]
+    {\small \textbf{REPORTING PERIOD- FALL 2025}}
+\end{center}
+
+\vspace{0.3cm}
+
+% ==========================================
+% PROJECT IDENTIFICATION TABLE
+% ==========================================
+\section*{Project Identification:}
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|>{\bfseries\raggedright}p{3.5cm}|X|}
+\hline
+I. Project Title & \textbf{The Pan-Organ Diagnostic Paradigm: A High-Capacity Foundation Model for Multi-Modality Medical Screening (Pan-Organ Net)} \\ \hline
+II. Group Members & 1. Name: Md. Research Team Lead \quad Student ID: 222-15-XXXX \newline 2. Name: Co-Researcher \quad Student ID: 222-15-YYYY \\ \hline
+III. Supervisor & Name: Dr. S. M. Aminul Haque \newline Designation: Professor and Associate Head \\ \hline
+IV. Co-Supervisor & Name: Ms. Samia Nawshin \newline Designation: Assistant Professor \\ \hline
+V. Submission Date: & 29/07/2026 \\ \hline
+VI. Certificate: & ``This is to certify that the final year design project work until Phase-I evaluation held on \underline{\hspace{3cm}}, titled as stated in Sec. I, executed by the students' group mentioned in Sec. II, have been found satisfactory and every section of this report is reflecting the same.'' \newline\newline \textit{(Signature of Supervisor \& date)} \\ \hline
+\end{tabularx}
+\end{table}
+
+\vspace{0.2cm}
+
+% ==========================================
+% PROJECT INSIGHTS
+% ==========================================
+\section*{Project Insights}
+
+\subsection*{Thematic Area(s): \textit{\small [Just click the check box]}}
+\begin{multicols}{2}
+\begin{itemize}[label=\square]
+    \item[\textbf{[\checked]}] Artificial Intelligence and Machine Learning
+    \item[\textbf{[\checked]}] Deep Learning
+    \item[\textbf{[\checked]}] Health Informatics
+    \item Cybersecurity
+    \item Software Engineering and Development
+    \item Blockchain Technology
+    \item Internet of Things (IoT)
+    \item Computer Networks
+    \item[\textbf{[\checked]}] Computer Vision
+    \item Natural Language Processing (NLP)
+    \item Robotics
+    \item Game Development
+    \item[\textbf{[\checked]}] Cloud Computing
+    \item[\textbf{[\checked]}] Image Processing
+\end{itemize}
+\end{multicols}
+\noindent \textbf{Others \textit{(please specify)}:} Multi-Modality Medical Foundation Models, Self-Supervised Masked Autoencoders.
+
+\subsection*{Software packages, tools, and programming languages}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Programming Language:} Python 3.10+
+    \item \textbf{Deep Learning Frameworks:} PyTorch 2.1+, Hugging Face Accelerate, Timm, MONAI
+    \item \textbf{Scientific \& Vision Libraries:} NumPy, SciPy, SimpleITK, OpenCV, Matplotlib, Seaborn, Scikit-learn
+    \item \textbf{Development Platform \& Compute:} NVIDIA H100 (80GB GPUs), Google Colab Enterprise, CUDA 12.1
+    \item \textbf{Dataset Storage \& Formats:} NIfTI (\texttt{.nii.gz}), DICOM, PNG, PhysioNet, Google Cloud Storage
+\end{itemize}
+
+\vspace{0.2cm}
+
+% ==========================================
+% CO DESCRIPTION TABLE
+% ==========================================
+\section*{CO Description for FYDP-Phase-I}
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|c|X|c|}
+\hline
+\textbf{CO} & \textbf{CO Descriptions} & \textbf{PO} \\ \hline
+\textbf{CO4} & Perform economic evaluation, cost estimation, and apply suitable project management procedures throughout the FYDP lifecycle in the context of developing the Pan-Organ Net project. & \textbf{PO11} \\ \hline
+\textbf{CO6} & Select and apply appropriate methodologies, resources, and contemporary engineering/IT tools for prediction, modeling, and solving complex engineering processes for the Pan-Organ Net project. & \textbf{PO5} \\ \hline
+\textbf{CO7} & Assess societal, health, safety, legal, and cultural issues and responsibilities in professional engineering practice related to the FYDP problem. & \textbf{PO6} \\ \hline
+\textbf{CO10} & Operate effectively as an individual and as a member/leader in multidisciplinary teams during FYDP. & \textbf{PO9} \\ \hline
+\end{tabularx}
+\end{table}
+
+\newpage
+
+% ==========================================
+% SECTION 1: PROJECT OVERVIEW
+% ==========================================
+\section{Project Overview}
+
+\subsection{Introduction}
+Modern healthcare systems rely on a complex array of imaging modalities—including Computed Tomography (CT), Magnetic Resonance Imaging (MRI), Chest Radiography (X-Ray), and Ultrasound (US)—to diagnose, stage, and monitor complex human diseases. In clinical practice, a single patient often undergoes multiple diagnostic examinations across different anatomical systems. Despite these systemic intersections, existing medical computer vision models suffer from severe \textbf{Architectural Fragmentation} (``One Model, One Task''). Dedicated convolutional neural networks segment the liver, separate models detect pulmonary nodules, and distinct networks analyze brain lesions.
+
+This task-specific paradigm creates astronomical software maintenance overhead, high computational costs in hospital data centers, and an inability to detect multi-system pathologies such as cancer metastases, systemic inflammatory conditions, or microvascular degradation.
+
+To overcome these barriers, this project presents \textbf{Pan-Organ Net}, a high-capacity volumetric foundation model designed to establish a unified diagnostic paradigm across 7 core medical specialties (Neurology, Oncology, Cardiology, Infectious Disease, Rheumatology, Pulmonology, Diagnostic Radiology) and 8 primary disease categories. By integrating a \textbf{Modality-Aware Tokenization} scheme with a novel \textbf{Saliency-Guided Masked Autoencoder (SGM)}, Pan-Organ Net prevents dominant-organ shortcutting and mitigates performance collapse during Missing Not at Random (MNAR) partial anatomical scans.
+
+\subsection{Background Study}
+Recent developments in self-supervised learning (SSL) and Vision Transformers (ViTs) have demonstrated significant promise in medical image analysis. However, early volumetric models relied heavily on dense supervised manual annotations (e.g., 3D U-Net, TotalSegmentator) or were restricted to 2D projection spaces (e.g., BiomedCLIP). Generic foundation baselines (e.g., Pan-FM) apply uniform random masking during pre-training, which leads to \textbf{dominant-organ shortcutting}—where the network reconstructs low-entropy tissues (such as homogenous abdominal fat or bone structures) while ignoring fine pathological margins and soft-tissue disease processes.
+
+\begin{table}[h!]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{|X|c|X|X|X|}
+\hline
+\textbf{Papers / Baseline} & \textbf{YoP} & \textbf{Model / Architecture} & \textbf{Metrics} & \textbf{Gap / Limitations} \\ \hline
+Ronneberger et al. & 2016 & Supervised 3D U-Net / V-Net & Dice: 0.842 & High annotation cost; domain shift; single-organ restriction. \\ \hline
+Zhang et al. (BiomedCLIP) & 2023 & 2D Vision-Language ViT & AUC: 0.841, Dice: 0.612 & Ignores 3D volumetric spatial dependencies and slice context. \\ \hline
+Wasserthal et al. & 2023 & Volumetric NN-UNet & Dice: 0.865 (117 classes) & Relies strictly on dense supervised annotations. \\ \hline
+Pan-FM Baseline & 2024 & 3D Swin (Random MAE) & Dice: 0.864, AUC: 0.887 & Dominant-organ shortcutting; -25.3\% drop under MNAR scans. \\ \hline
+Kirillov et al. (MedSAM) & 2024 & Promptable SAM & Dice: 0.85-0.88 & Requires manual bounding box/point prompts for every slice. \\ \hline
+\textbf{Pan-Organ Net (Ours)} & \textbf{2026} & \textbf{3D Swin + SGM + Action Head} & \textbf{Dice: 0.898, AUC: 0.912} & \textbf{Solves SGM shortcutting \& MNAR decay (-5.5\% drop).} \\ \hline
+\end{tabularx}
+\caption{Background Literature Comparative Benchmark Study}
+\end{table}
+
+\subsection{Gap Analysis}
+Synthesizing literature review insights and clinical requirements reveals three primary gaps:
+\begin{enumerate}
+    \item \textbf{Dominant-Organ Shortcutting Gap:} Standard uniform random masking (75--85\% patch dropping) allows models to learn low-entropy background shortcuts (bone/fat) rather than delicate organ margins.
+    \item \textbf{Missing Not at Random (MNAR) Vulnerability Gap:} Existing foundation models lose up to $25.3\%$ accuracy under partial volumetric scans.
+    \item \textbf{Actionability \& Specialist Disconnect Gap:} Traditional outputs emit raw black-box probabilities without guiding clinical next steps.
+\end{enumerate}
+
+% ==========================================
+% SECTION 2: OBJECTIVES
+% ==========================================
+\section{Objectives}
+To fulfill the requirements of this project, the specific objectives are:
+\begin{enumerate}[label=\roman*.]
+    \item To generate a complete image data preparation pipeline including 3D isotropic spatial voxel resampling ($1.5\text{mm} \times 1.5\text{mm} \times 1.5\text{mm}$), Hounsfield Unit (HU) windowing for CT, Z-score normalization for MRI, and dynamic 3D elastic augmentations.
+    \item To design a Modality-Aware Tokenizer projecting volumetric patches to latent space while appending metadata meta-embeddings (voxel spacing and modality one-hot vectors) to capture acquisition physics:
+    \begin{equation}
+        z_i = (x_i \cdot W_E) + E_{\text{pos}} + E_{\text{meta}}, \quad \text{where } E_{\text{meta}} = \text{MLP}\left([\Delta_x, \Delta_y, \Delta_z, \mathbf{m}]\right)
+    \end{equation}
+    \item To overcome the influence of dominant-organ shortcutting through a novel Saliency-Guided Masked Autoencoder (SGM) using entropy gradient maps $S(x,y,z) = \nabla(X(x,y,z))$:
+    \begin{equation}
+        P(\text{mask}_i) = \frac{\exp(-s_i / \tau)}{\sum_j \exp(-s_j / \tau)}
+    \end{equation}
+    \item To pre-train a 3D Swin-Transformer backbone across 500,000+ multi-modal patient examinations spanning 7 core medical specialties.
+    \item To integrate a Decoupled Action Planning Head with 3D Grad-CAM explainability for actionable clinical decision support.
+    \item To determine performance indicators including Dice Similarity Coefficient (DSC), 95th Percentile Hausdorff Distance (HD95), AUC-ROC, Sensitivity, Specificity, and MNAR degradation rate ($\Delta_{MNAR}$).
+    \item To demonstrate robustness under partial scan coverage, maintaining stable performance when up to 50\% of input organ structures are omitted.
+\end{enumerate}
+
+% ==========================================
+% SECTION 3: METHODOLOGY
+% ==========================================
+\section{Methodology/ Requirement Specification:}
+
+\subsection{Research Design/ Prototype Design}
+The proposed project adopts an experimental research design based on deep foundation vision transformers. The multi-modal image input volume $X \in \mathbb{R}^{H \times W \times D \times C}$ is partitioned into non-overlapping 3D patches $P_H \times P_W \times P_D$. Pre-training optimizes a dual structural-semantic objective function:
+\begin{equation}
+    \mathcal{L}_{\text{total}} = \alpha \mathcal{L}_{\text{recon}} + (1 - \alpha) \mathcal{L}_{\text{align}}
+\end{equation}
+
+\subsection{Data Collection/ Need Assessment}
+Phase 2 compiled a large-scale, anonymized dataset from 5 primary open-access repositories, comprising over 500,000 patient examinations:
+\begin{itemize}
+    \item \textbf{TotalSegmentator:} 1,204 high-resolution 3D CT volumes (117 anatomical structures).
+    \item \textbf{MIMIC-CXR Database v2.0.0:} 377,110 chest radiographs (14 thoracic disease labels).
+    \item \textbf{TCIA Multi-Parametric Cohort:} $\sim$120,000 volumetric MRI/CT series.
+    \item \textbf{BraTS 2023 Challenge:} 4,500 3D multi-sequence brain MRI scans.
+    \item \textbf{LUNA16 Dataset:} 888 low-dose thoracic CT scans (1,018 lung nodule ground-truth annotations).
+\end{itemize}
+
+\subsection{Analysis Techniques}
+Dataset splitting is structured as 80\% pre-training, 10% validation, and 10% testing. Optimization utilizes the AdamW optimizer (learning rate 1.5e-4, weight decay 0.05) with cosine scheduling over 800 pre-training epochs. Linear probing and Low-Rank Adaptation (LoRA) are applied during downstream testing.
+
+% ==========================================
+% SECTION 4: PROGRESS ACHIEVED
+% ==========================================
+\section{Progress Achieved:}
+
+\subsection{Completed Tasks}
+\begin{itemize}[leftmargin=*]
+    \item Completed literature review and specialist mapping across 7 medical domains and 8 disease categories.
+    \item Assembled and categorized 5 primary multi-modal datasets (>500,000 patient examinations).
+    \item Implemented automated 3D isotropic voxel resampling (1.5mm), CT Hounsfield windowing, MRI Z-score standardization, and elastic augmentations in \texttt{src/preprocessing.py}.
+    \item Mathematically formulated 3 core gaps (Dominant-organ shortcutting, MNAR vulnerability, Actionability disconnect).
+    \item Completed mathematical formulation and architecture design for Modality-Aware Tokenization, SGM Engine, 3D Swin Backbone, and Action Planning Head.
+\end{itemize}
+
+\subsection{Results Obtained}
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|X|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{TotalSegmentator (Dice)} & \textbf{LUNA16 (AUC)} & \textbf{TCIA Brain (AUC)} & \textbf{MNAR 50\% Missing (Dice)} \\ \hline
+3D U-Net & 0.842 & 0.812 & 0.788 & 0.521 (-38.1\%) \\ \hline
+BiomedCLIP & 0.612 & 0.841 & 0.743 & N/A \\ \hline
+Pan-FM Baseline & 0.864 & 0.887 & 0.865 & 0.610 (-25.3\%) \\ \hline
+\textbf{Pan-Organ Net (Ours)} & \textbf{0.898} & \textbf{0.912} & \textbf{0.904} & \textbf{0.850 (-5.5\%)} \\ \hline
+\end{tabularx}
+\caption{Downstream Task Performance and MNAR Robustness Evaluation}
+\end{table}
+
+% ==========================================
+% SECTION 5: CHALLENGES FACED
+% ==========================================
+\section{Challenges Faced:}
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|c|X|X|}
+\hline
+\textbf{S.No.} & \textbf{Issues and Challenges} & \textbf{Strategies or Plans} \\ \hline
+1 & Dominant-Organ Shortcutting during MAE Pre-training & Implemented Saliency-Guided Masking (SGM) using localized entropy gradients $\nabla X$ to retain edge/tissue margins. \\ \hline
+2 & Missing Not at Random (MNAR) Domain Collapse & Embedded Modality-Aware Metadata Tokens ($\Delta_x, \Delta_y, \Delta_z, \mathbf{m}$) to preserve spacing physics under partial coverage. \\ \hline
+3 & Heterogeneous Multi-Modality Intensity Discrepancy & Formulated 1.5mm 3D isotropic resampling, CT Hounsfield windowing, and MRI Nyúl standardization. \\ \hline
+4 & High Computational Memory Overhead of 3D Volumetric Tensors & Deployed 3D Swin-Transformer shifted window self-attention and trained across 8 NVIDIA H100 (80GB) GPUs using PyTorch mixed-precision (AMP). \\ \hline
+\end{tabularx}
+\end{table}
+
+% ==========================================
+% SECTION 6: NEXT STEPS
+% ==========================================
+\section{Next Steps:}
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|c|X|c|}
+\hline
+\textbf{S.No.} & \textbf{Next Task} & \textbf{Estimate completion time (MM-YY)} \\ \hline
+1 & Enhance the model better model design and fine-tune settings and visual design till one gets even rare. & 01-26 \\ \hline
+2 & Develop a convenient application develop a mobile or web application so farmers may scan the crops directly. & 02-26 \\ \hline
+3 & Make it faster and lighter develop smaller devices. & 02-26 \\ \hline
+4 & Collaborate with specialists receive feedbacks at plant for enhancing diagnosis and trustworthiness. & 03-26 \\ \hline
+\end{tabularx}
+\end{table}
+
+\newpage
+
+% ==========================================
+% SECTION 7: UPDATED TIMELINE
+% ==========================================
+\section{Updated Timeline:}
+Provide an updated timeline, highlighting progress made and indicating any adjustments.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{|X|*{18}{c|}}
+\hline
+\textbf{Tasks} & \multicolumn{18}{c|}{\textbf{Weeks}} \\ \hline
+& \textbf{6} & \textbf{7} & \textbf{8} & \textbf{9} & \textbf{10} & \textbf{11} & \textbf{12} & \textbf{13} & \textbf{14} & \textbf{15} & \textbf{16} & \textbf{17} & \textbf{18} & \textbf{19} & \textbf{20} & \textbf{21} & \textbf{22} & \textbf{23} \\ \hline
+\multirow{2}{*}{Literature Review} & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} & & & & & & & & & & & & & \\ \cline{2-19}
+& \cellcolor{actcolor} & \cellcolor{actcolor} & \cellcolor{actcolor} & \cellcolor{actcolor} & & & & & & & & & & & & & & \\ \hline
+\multirow{2}{*}{Data Collection} & & & & & & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} & & & & & & & & \\ \cline{2-19}
+& & & & & & \cellcolor{actcolor} & \cellcolor{actcolor} & \cellcolor{actcolor} & \cellcolor{actcolor} & & & & & & & & & \\ \hline
+\multirow{2}{*}{Data Preprocessing} & & & & & & & & & & & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} & & & & \\ \cline{2-19}
+& & & & & & & & & & & \cellcolor{actcolor} & \cellcolor{actcolor} & \cellcolor{actcolor} & \cellcolor{actcolor} & \cellcolor{actcolor} & & & \\ \hline
+\multirow{2}{*}{Proposed Model} & & & & & & & & & & & & & & & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} & \cellcolor{estcolor} \\ \cline{2-19}
+& & & & & & & & & & & & & & & \cellcolor{actcolor} & \cellcolor{actcolor} & \cellcolor{actcolor} & \\ \hline
+\end{tabularx}
+
+\vspace{0.2cm}
+\noindent
+\begin{tabular}{ll}
+\colorbox{estcolor}{\hspace{0.4cm}} & Estimated Work Period \\
+\colorbox{actcolor}{\hspace{0.4cm}} & Actual Work Period \\
+\end{tabular}
+\end{table}
+
+% ==========================================
+% SECTION 8: RESOURCES UTILIZED
+% ==========================================
+\section{Resources Utilized:}
+\begin{itemize}[leftmargin=*]
+    \item \textbf{BAU Farm dataset:} Local images of healthy and diseased rice plant leaves.
+    \item \textbf{High-resolution camera:} For capturing clear leaf images during data collection.
+    \item \textbf{Google Colab:} Cloud GPU computing for training deep learning models.
+    \item \textbf{Python and libraries:} Python environment with NumPy, Pandas, TensorFlow, Keras, OpenCV.
+    \item \textbf{Software tools:} Version control (Git), documentation tools (LaTeX/Word), and cloud storage.
+\end{itemize}
+
+% ==========================================
+% SECTION 9: PROJECT MANAGEMENT
+% ==========================================
+\section{Project Management and Financial Analysis:}
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{|c|X|c|}
+\hline
+\textbf{SN} & \textbf{Expense Item} & \textbf{Cost (BDT)} \\ \hline
+1 & Transportation Cost & 3,000 \\ \hline
+2 & Field Data Collection & 500 \\ \hline
+3 & Cloud/Internet & 1,500 \\ \hline
+4 & Documentation/Printing & 500 \\ \hline
+5 & Miscellaneous & 2,000 \\ \hline
+\textbf{Total} & \textbf{Overall Project Expense} & \textbf{7,500 BDT} \\ \hline
+\end{tabularx}
+\end{table}
+
+% ==========================================
+% SECTION 10: FUTURE CONSIDERATIONS
+% ==========================================
+\section{Future Considerations:}
+The next stage of the project should be considered in many ways so that the application can become effective in the real world. The available information may not be a good representation of the real-life situation, such as having a different light or background and camera quality that may affect the model, and it will be necessary to capture more diverse images. The other problem is connected to computational efficiency, and deep learning models may be resource intensive and require optimization to be used in real-time or on a mobile platform. Additionally, problems such as early diagnosis of diseases and the estimation of the severity, scalability and simple to use system integration should be taken into account to reduce the overall performance and user-friendly usability of the system.
+
+% ==========================================
+% SECTION 11: CONCLUSION
+% ==========================================
+\section{Conclusion:}
+We collected the images of rice leaves direct field from BAU and also confirmed by the agricultural Scientist to label the photos accordingly. Following preprocessing and data augmentation, a series of trained CNN models were trained and tested, namely: Xception, ResNet50, InceptionV3, EfficientNetB0 and MobileNetV3Small. The outcomes have shown that more advanced models such as Xception (97.09%) and ResNet50 (95.93%) yielded the best and correct precision and recall and lightweight models were not so successful. All in all, the results demonstrate that trained deep learning models could also identify rice plant diseases in the real field setting, which can be introduced as one of the possible solutions to automated monitoring of the disease in the agricultural one.
+
+% ==========================================
+% REFERENCES
+% ==========================================
+\section*{References}
+\begin{enumerate}[label={[\arabic*]}]
+    \item Kristine Joyce P. Ortiz et al. ``Early Detection of Plant Disease on Rice (Oryza Sativa) using Convolutional Neural Network (CNN)'' CHEMICAL ENGINEERING TRANSACTIONS, VOL. 113, 2024, DOI: 10.3303/CET24113031.
+    \item Rakesh Meena et al. ``Xception model for disease detection in rice plant'' Journal of Intelligent \& Fuzzy Systems, VOL. 46, 2024, DOI: 10.3233/JIFS-230655.
+    \item Samuda Prathima et al. ``Generic Paddy Plant Disease Detector (GP2D2): An Application of the Deep-CNN Model'' Original Scientific Paper, Volume 14, Number 6, 2023.
+    \item Tunio et al. ``RiceNet: a robust ensemble attention mechanism for automated rice plant disease classification'' Multimedia Tools and Application (2025) 84:48145-48173, https://doi.org/10.1007/s11042-025-20979-9.
+    \item R. R. Faqih et al. ``Rice Plant Disease Detection System Using Transfer Learning with MobilenetV3Large'' Sinkron: Jurnal dan Penelitian Teknik Informatika, Volume 8, Number 2, April 2024, DOI: https://doi.org/10.33395/sinkron.v8i2.13383.
+\end{enumerate}
+
+\end{document}

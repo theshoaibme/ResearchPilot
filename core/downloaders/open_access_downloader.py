@@ -17,7 +17,7 @@ def download_totalsegmentator():
 
     print(f"Target Directory: {target_dir}")
     if not zip_path.exists():
-        cmd = f"wget -c '{url}' -O '{zip_path}'"
+        cmd = f"curl -C - -L '{url}' -o '{zip_path}'"
         print(f"Executing: {cmd}")
         subprocess.run(cmd, shell=True)
     else:

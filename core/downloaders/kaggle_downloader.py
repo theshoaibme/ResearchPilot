@@ -3,9 +3,9 @@ import sys
 import zipfile
 from pathlib import Path
 
-# Configure Kaggle Token
-KAGGLE_TOKEN = "KGAT_7779efdbcabb625d5aaffdb2a39465c4"
-os.environ["KAGGLE_API_TOKEN"] = KAGGLE_TOKEN
+# Configure Kaggle Legacy API Credentials
+os.environ.setdefault("KAGGLE_USERNAME", "theshoaib2")
+os.environ.setdefault("KAGGLE_KEY", "5cf6cabce5347ceeec86c8448f848d9f")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATASET_BASE = BASE_DIR / "dataset"
@@ -14,14 +14,21 @@ try:
     from kaggle.api.kaggle_api_extended import KaggleApi
     from tqdm import tqdm
 except ImportError:
-    os.system(f"{sys.executable} -m pip install kaggle tqdm --break-system-packages")
+    os.system(f"{sys.executable} -m pip install kaggle tqdm")
     from kaggle.api.kaggle_api_extended import KaggleApi
     from tqdm import tqdm
+except Exception as e:
+    print(f"Warning: Kaggle API initialization error: {e}")
 
 def get_authenticated_api():
-    api = KaggleApi()
-    api.authenticate()
-    return api
+    try:
+        api = KaggleApi()
+        api.authenticate()
+        return api
+    except Exception as e:
+        print(f"[KAGGLE AUTH NOTICE] Could not authenticate Kaggle API automatically: {e}")
+        print("To download Kaggle datasets, ensure your API credentials (kaggle.json or KAGGLE_USERNAME/KAGGLE_KEY) are set.")
+        return None
 
 def unzip_with_progress(zip_path, extract_to):
     print(f"Unzipping {zip_path.name}...")
@@ -83,6 +90,9 @@ def download_kaggle_dataset(api, dataset_id, target_folder, is_competition=False
 
 def download_all_kaggle_datasets():
     api = get_authenticated_api()
+    if not api:
+        print("[KAGGLE DOWNLOAD SKIPPED] Valid Kaggle API credentials not found.")
+        return
     datasets = [
         {"id": "tawsifurrahman/covid19-radiography-database", "dir": "COVID19_XRay", "competition": False},
         {"id": "aryashah2k/breast-ultrasound-images-dataset", "dir": "BUSI", "competition": False},

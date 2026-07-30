@@ -4,7 +4,7 @@ import getpass
 import subprocess
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATASET_BASE = BASE_DIR / "dataset"
 
 def download_physionet_datasets():

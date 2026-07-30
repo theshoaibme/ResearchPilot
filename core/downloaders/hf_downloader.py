@@ -4,7 +4,7 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 
 HF_TOKEN = "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"
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = BASE_DIR / "dataset" / "PanOrganNet"
 
 def download_hf_dataset(token=None):
@@ -18,6 +18,12 @@ def download_hf_dataset(token=None):
     print(f"HuggingFace Downloader: {dataset_id}")
     print(f"Target Directory: {DATASET_DIR}")
     print(f"==================================================")
+
+    # Check if dataset is already downloaded and extracted
+    existing_files = [f for f in DATASET_DIR.glob("*") if not f.name.startswith(".")]
+    if len(existing_files) > 1:
+        print(f"[SKIP] {dataset_id} is already downloaded and present in {DATASET_DIR}\n")
+        return
 
     try:
         path = snapshot_download(

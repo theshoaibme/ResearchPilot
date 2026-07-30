@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATASET_BASE = BASE_DIR / "dataset"
 
 def download_tcia_collections():
@@ -32,7 +32,7 @@ def download_tcia_collections():
 
         try:
             series_data = nbia.getSeries(collection=item["name"])
-            if series_data is not None and not series_data.empty:
+            if series_data and len(series_data) > 0:
                 print(f"Found {len(series_data)} series. Starting download...")
                 nbia.downloadSeries(series_data, path=str(target_path))
                 print(f"SUCCESS: Completed TCIA Collection {item['name']}\n")

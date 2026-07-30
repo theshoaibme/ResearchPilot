@@ -27,12 +27,17 @@ def download_tcia_collections():
         target_path = DATASET_BASE / item["dir"]
         target_path.mkdir(parents=True, exist_ok=True)
 
-        print(f"\nDownloading TCIA Collection: {item['name']} ({item['desc']})")
+        print(f"\nFetching series metadata for TCIA Collection: {item['name']} ({item['desc']})...")
         print(f"Target: {target_path}")
 
         try:
-            nbia.downloadSeries(collection=item["name"], path=str(target_path))
-            print(f"SUCCESS: Completed TCIA Collection {item['name']}\n")
+            series_data = nbia.getSeries(collection=item["name"])
+            if series_data is not None and not series_data.empty:
+                print(f"Found {len(series_data)} series. Starting download...")
+                nbia.downloadSeries(series_data, path=str(target_path))
+                print(f"SUCCESS: Completed TCIA Collection {item['name']}\n")
+            else:
+                print(f"No series found for collection {item['name']}\n")
         except Exception as e:
             print(f"ERROR downloading TCIA Collection {item['name']}: {e}\n")
 

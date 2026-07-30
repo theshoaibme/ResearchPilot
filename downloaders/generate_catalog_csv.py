@@ -1,6 +1,10 @@
 import csv
+from pathlib import Path
 
-# Comprehensive 25-dataset catalog across Kaggle, PhysioNet, TCIA, Zenodo, Grand Challenge, Synapse, and Mendeley Data
+BASE_DIR = Path(__file__).resolve().parent.parent
+OUTPUT_CSV = BASE_DIR / "phases" / "Pan_Organ_Medical_Datasets_Catalog.csv"
+
+# Comprehensive 23-dataset catalog across Kaggle, PhysioNet, TCIA, Zenodo, Grand Challenge, Synapse, and Mendeley Data
 ultimate_dataset_catalog = [
     # --- 3D CT DATASETS ---
     {
@@ -79,7 +83,7 @@ ultimate_dataset_catalog = [
         "Pre-training / Validation Role": "Vascular PE embolus detection"
     },
 
-    # --- 3D / MULTI-PARAMETRIC MRI DATASETS ---
+    # --- 3D MRI DATASETS ---
     {
         "Dataset ID": "DS-MRI-01",
         "Dataset Name": "BraTS 2023 (Brain Tumor Segmentation)",
@@ -233,7 +237,7 @@ ultimate_dataset_catalog = [
         "Pre-training / Validation Role": "Localized lesion detection benchmarking"
     },
 
-    # --- ULTRASOUND DATASETS ---
+    # --- 2D ULTRASOUND & ECHOCARDIOGRAPHY DATASETS ---
     {
         "Dataset ID": "DS-US-01",
         "Dataset Name": "BUSI (Breast Ultrasound Images Dataset)",
@@ -280,7 +284,7 @@ ultimate_dataset_catalog = [
         "Pre-training / Validation Role": "Peripheral nerve segmentation benchmark"
     },
 
-    # --- MAMMOGRAPHY DATASETS ---
+    # --- 2D MAMMOGRAPHY DATASETS ---
     {
         "Dataset ID": "DS-MAMMO-01",
         "Dataset Name": "CBIS-DDSM (Curated Breast Imaging DDSM)",
@@ -312,7 +316,7 @@ ultimate_dataset_catalog = [
         "Pre-training / Validation Role": "High-resolution FFDM lesion classification"
     },
 
-    # --- NUCLEAR MEDICINE / PET-CT DATASETS ---
+    # --- 3D HYBRID PET-CT DATASET ---
     {
         "Dataset ID": "DS-PET-01",
         "Dataset Name": "TCIA FDG-PET-CT Lesion Dataset (AutoPET)",
@@ -329,7 +333,7 @@ ultimate_dataset_catalog = [
         "Pre-training / Validation Role": "Metabolic multi-organ tumor localization"
     },
 
-    # --- HISTOPATHOLOGY DATASETS ---
+    # --- 2D HISTOPATHOLOGY (WSI) DATASETS ---
     {
         "Dataset ID": "DS-HIST-01",
         "Dataset Name": "CAMELYON16 / CAMELYON17",
@@ -362,12 +366,17 @@ ultimate_dataset_catalog = [
     }
 ]
 
-output_csv_path = r"c:\Users\HP\OneDrive\Desktop\ResearchPilot\phases\Pan_Organ_Medical_Datasets_Catalog.csv"
-headers = list(ultimate_dataset_catalog[0].keys())
+def generate_csv():
+    OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = list(ultimate_dataset_catalog[0].keys())
 
-with open(output_csv_path, mode="w", newline="", encoding="utf-8") as file:
-    writer = csv.DictWriter(file, fieldnames=headers)
-    writer.writeheader()
-    writer.writerows(ultimate_dataset_catalog)
+    with open(OUTPUT_CSV, mode="w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in ultimate_dataset_catalog:
+            writer.writerow(row)
 
-print(f"Ultimate Dataset catalog successfully generated at: {output_csv_path} containing {len(ultimate_dataset_catalog)} datasets across ALL major platforms!")
+    print(f"Dataset Catalog CSV generated successfully at: {OUTPUT_CSV}")
+
+if __name__ == "__main__":
+    generate_csv()

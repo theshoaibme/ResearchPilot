@@ -1,6 +1,8 @@
 # Datasets Directory (ignore large medical image binaries)
 datasets/
 datasets/*
+dataset/
+dataset/*
 
 # Python & Temporary Files
 __pycache__/

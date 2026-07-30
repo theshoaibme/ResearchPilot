@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-RAW_DIR = BASE_DIR / "dataset" / "PanOrganNet"
+RAW_DIR = BASE_DIR / "dataset" / "raw" / "PanOrganNet"
 PROCESSED_DIR = BASE_DIR / "dataset" / "processed" / "PanOrganNet"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))

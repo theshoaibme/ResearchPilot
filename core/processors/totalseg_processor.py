@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-RAW_DIR = BASE_DIR / "dataset" / "TotalSegmentator"
+RAW_DIR = BASE_DIR / "dataset" / "raw" / "TotalSegmentator"
 PROCESSED_DIR = BASE_DIR / "dataset" / "processed" / "TotalSegmentator"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))

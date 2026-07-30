@@ -5,7 +5,7 @@ from huggingface_hub import snapshot_download
 
 HF_TOKEN = "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"
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DATASET_DIR = BASE_DIR / "dataset" / "PanOrganNet"
+DATASET_DIR = BASE_DIR / "dataset" / "raw" / "PanOrganNet"
 
 def download_hf_dataset(token=None):
     if not token:

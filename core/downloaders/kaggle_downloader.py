@@ -8,7 +8,7 @@ os.environ.setdefault("KAGGLE_USERNAME", "theshoaib2")
 os.environ.setdefault("KAGGLE_KEY", "5cf6cabce5347ceeec86c8448f848d9f")
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DATASET_BASE = BASE_DIR / "dataset"
+DATASET_BASE = BASE_DIR / "dataset" / "raw"
 
 try:
     from kaggle.api.kaggle_api_extended import KaggleApi

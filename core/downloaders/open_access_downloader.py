@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DATASET_BASE = BASE_DIR / "dataset"
+DATASET_BASE = BASE_DIR / "dataset" / "raw"
 
 def download_totalsegmentator():
     print("==================================================")

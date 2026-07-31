@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DATASET_BASE = BASE_DIR / "dataset"
+DATASET_BASE = BASE_DIR / "dataset" / "raw"
 
 def download_tcia_collections():
     print("==================================================")
@@ -13,7 +13,7 @@ def download_tcia_collections():
     try:
         from tcia_utils import nbia
     except ImportError:
-        os.system(f"{sys.executable} -m pip install tcia-utils --break-system-packages")
+        os.system(f"{sys.executable} -m pip install tcia-utils")
         from tcia_utils import nbia
 
     collections = [

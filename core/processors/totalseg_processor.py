@@ -25,7 +25,7 @@ def process_totalsegmentator():
     try:
         import nibabel as nib
     except ImportError:
-        os.system(f"{sys.executable} -m pip install nibabel --break-system-packages")
+        os.system(f"{sys.executable} -m pip install nibabel")
         import nibabel as nib
 
     nii_files = list(RAW_DIR.glob("**/*.nii.gz"))

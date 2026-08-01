@@ -1,14 +1,89 @@
-# Datasets Directory (ignore large medical image binaries)
-datasets/
-datasets/*
+# ==========================================
+# Large Medical Imaging Datasets & Raw Binaries
+# ==========================================
 dataset/
-dataset/*
+datasets/
+data/
+*.dcm
+*.dcm.gz
+*.nii
+*.nii.gz
+*.mhd
+*.raw
+*.svs
+*.tif
+*.tiff
+*.h5
+*.hdf5
+*.npz
+*.npy
+*.parquet
+*.kaggle-partial
 
-# Python & Temporary Files
-__pycache__/
-*.pyc
+# Archive Files & Downloads
 *.zip
 *.tar
-*.gz
-*.kaggle-partial
+*.tar.gz
+*.tar.bz2
+*.7z
+*.rar
+
+# ==========================================
+# Model Weights, Checkpoints & Artifacts
+# ==========================================
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.onnx
+*.safetensors
+models_checkpoints/
+checkpoints/
+weights/
+logs/
+tb_logs/
+wandb/
+
+# ==========================================
+# Python & Environment Files
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ==========================================
+# Operating System & IDE Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
 scratch/

@@ -3,7 +3,10 @@ import sys
 from pathlib import Path
 from huggingface_hub import snapshot_download
 
-HF_TOKEN = "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"
+from dotenv import load_dotenv
+load_dotenv()
+
+HF_TOKEN = os.environ.get("HF_TOKEN")
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = BASE_DIR / "dataset" / "raw" / "PanOrganNet"
 
@@ -11,7 +14,7 @@ def download_hf_dataset(token=None):
     if not token:
         token = os.environ.get("HF_TOKEN", HF_TOKEN)
 
-    dataset_id = "the-shoaib2/PanOrganNet"
+    dataset_id = "theshoaibme/PanOrganNet"
     DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
     print(f"==================================================")

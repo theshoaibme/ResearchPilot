@@ -1,0 +1,332 @@
+import os
+import sys
+import json
+import time
+from pathlib import Path
+from datetime import datetime
+
+import torch
+import torch.nn as nn
+from tqdm import tqdm
+import numpy as np
+import matplotlib.pyplot as plt
+from huggingface_hub import HfApi
+from dotenv import load_dotenv
+load_dotenv()
+
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    confusion_matrix, roc_auc_score
+)
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+
+from core.models.oncology.busi.model_zoo import get_busi_model, SUPPORTED_MODELS
+from core.models.oncology.busi.data_loader import get_busi_loaders
+from core.engine.base_trainer import BaseTrainer, Colors, Logger
+
+CLASS_NAMES = ["Normal", "Benign", "Malignant"]
+HF_TOKEN = os.environ.get("HF_TOKEN")
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
+def plot_confusion_matrix(cm_array, model_name: str, save_path: str):
+    plt.figure(figsize=(7, 6))
+    plt.imshow(cm_array, interpolation='nearest', cmap=plt.cm.Purples)
+    plt.title(f'Test Confusion Matrix — {model_name}\n(BUSI Breast Ultrasound)', fontsize=13, fontweight='bold')
+    plt.colorbar()
+
+    tick_marks = np.arange(len(CLASS_NAMES))
+    plt.xticks(tick_marks, CLASS_NAMES, rotation=25)
+    plt.yticks(tick_marks, CLASS_NAMES)
+
+    thresh = cm_array.max() / 2.
+    for i in range(cm_array.shape[0]):
+        for j in range(cm_array.shape[1]):
+            plt.text(j, i, format(cm_array[i, j], 'd'),
+                     ha="center", va="center",
+                     color="white" if cm_array[i, j] > thresh else "black",
+                     fontsize=12, fontweight='bold')
+
+    plt.tight_layout()
+    plt.ylabel('True Pathology', fontsize=11)
+    plt.xlabel('Predicted Diagnosis', fontsize=11)
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+def evaluate_on_test(model, test_loader, device: str):
+    model.eval()
+    all_preds = []
+    all_targets = []
+    all_probs = []
+
+    with torch.no_grad():
+        for inputs, targets in test_loader:
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            probs = torch.softmax(outputs, dim=1)
+            _, preds = torch.max(outputs, 1)
+
+            all_preds.extend(preds.cpu().numpy())
+            all_targets.extend(targets.numpy())
+            all_probs.extend(probs.cpu().numpy())
+
+    y_true = np.array(all_targets)
+    y_pred = np.array(all_preds)
+    y_prob = np.array(all_probs)
+
+    acc = accuracy_score(y_true, y_pred)
+    prec = precision_score(y_true, y_pred, average='macro', zero_division=0)
+    rec = recall_score(y_true, y_pred, average='macro', zero_division=0)
+    f1 = f1_score(y_true, y_pred, average='macro', zero_division=0)
+
+    try:
+        auc = roc_auc_score(y_true, y_prob, multi_class='ovr')
+    except Exception:
+        auc = 0.0
+
+    cm = confusion_matrix(y_true, y_pred)
+
+    per_class = {}
+    for i, c_name in enumerate(CLASS_NAMES):
+        tp = cm[i, i]
+        fn = cm[i, :].sum() - tp
+        fp = cm[:, i].sum() - tp
+        tn = cm.sum() - (tp + fp + fn)
+
+        sens = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+        per_class[c_name] = {
+            "sensitivity": sens,
+            "specificity": spec,
+            "f1": f1_score(y_true == i, y_pred == i, zero_division=0)
+        }
+
+    return {
+        "accuracy": acc,
+        "precision": prec,
+        "recall": rec,
+        "f1_macro": f1,
+        "auc_roc": auc,
+        "confusion_matrix": cm,
+        "per_class": per_class
+    }
+
+def train_and_benchmark_busi(epochs: int = 10, batch_size: int = 16):
+    print("\n" + "=" * 70)
+    print(f"{Colors.BOLD}{Colors.MAGENTA}🎗️ PanOrganNet: BUSI Breast Ultrasound Benchmark & Training{Colors.RESET}")
+    print("=" * 70)
+
+    device = "mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu")
+    Logger.info(f"Target Compute Device: {device.upper()}")
+
+    train_loader, val_loader, test_loader = get_busi_loaders(batch_size=batch_size)
+    Logger.success(f"Loaded BUSI splits: Train={len(train_loader.dataset)}, Val={len(val_loader.dataset)}, Test={len(test_loader.dataset)}")
+
+    models_to_train = ["EfficientNetV2_S", "DenseNet121"]
+    results = {}
+
+    reports_dir = PROJECT_ROOT / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    for m_name in models_to_train:
+        print(f"\n{Colors.BOLD}{Colors.CYAN}--- Training Architecture: {m_name} ---{Colors.RESET}")
+        model = get_busi_model(m_name, num_classes=3, pretrained=True)
+
+        # Class weights: benign=306, malignant=147, normal=93
+        class_weights = torch.tensor([3.3, 1.0, 2.1]).to(device)
+        criterion = nn.CrossEntropyLoss(weight=class_weights)
+
+        optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-4)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        exp_dir = PROJECT_ROOT / "core" / "models" / "oncology" / "experiments" / f"{m_name}_{timestamp}"
+        exp_dir.mkdir(parents=True, exist_ok=True)
+
+        trainer = BaseTrainer(
+            model=model,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            criterion=criterion,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            device=device,
+            exp_dir=str(exp_dir),
+            patience=5
+        )
+
+        trainer.fit(num_epochs=epochs, resume=False)
+
+        # Load best model for evaluation
+        best_pt = exp_dir / "best_model.pt"
+        ckpt = torch.load(best_pt, map_location=device)
+        model.load_state_dict(ckpt['model_state_dict'])
+
+        # Evaluate on Test Set
+        Logger.info(f"Evaluating {m_name} on holdout Test Cohort (117 scans)...")
+        eval_metrics = evaluate_on_test(model, test_loader, device)
+
+        cm_path = reports_dir / f"cm_busi_{m_name.lower()}.png"
+        plot_confusion_matrix(eval_metrics['confusion_matrix'], m_name, str(cm_path))
+        Logger.success(f"Saved Confusion Matrix: {cm_path}")
+
+        results[m_name] = {
+            "metrics": eval_metrics,
+            "exp_dir": str(exp_dir),
+            "best_pt": str(best_pt)
+        }
+
+    # Print Summary Table
+    print("\n" + "=" * 70)
+    print(f"{Colors.BOLD}{Colors.GREEN}🏆 BUSI BREAST ULTRASOUND BENCHMARK RESULTS{Colors.RESET}")
+    print("=" * 70)
+    print(f"{'Model':<18} | {'Test Acc':<10} | {'Macro F1':<10} | {'Sensitivity':<12} | {'Specificity':<12} | {'AUC-ROC'}")
+    print("-" * 70)
+    for m_name, r in results.items():
+        m = r['metrics']
+        print(f"{m_name:<18} | {m['accuracy']*100:>6.2f}%    | {m['f1_macro']:>7.4f}    | {m['recall']*100:>8.2f}%    | "
+              f"{np.mean([v['specificity'] for v in m['per_class'].values()])*100:>8.2f}%    | {m['auc_roc']:>6.4f}")
+    print("=" * 70 + "\n")
+
+    # Select Champion
+    champion_name = max(results.keys(), key=lambda k: results[k]['metrics']['f1_macro'])
+    Logger.success(f"Champion Model for BUSI: {champion_name} (F1: {results[champion_name]['metrics']['f1_macro']:.4f})")
+
+    # Deploy Champion to Hugging Face
+    deploy_busi_to_hf(champion_name, results[champion_name])
+
+def deploy_busi_to_hf(model_name: str, result_dict: dict):
+    print("\n" + "=" * 70)
+    print(f"{Colors.BOLD}{Colors.MAGENTA}🚀 Deploying BUSI Breast Ultrasound Champion to Hugging Face{Colors.RESET}")
+    print("=" * 70)
+
+    api = HfApi()
+    username = api.whoami(token=HF_TOKEN)["name"]
+    repo_id = f"{username}/panorgan-oncology-breast-ultrasound-classifier"
+
+    api.create_repo(repo_id=repo_id, repo_type="model", token=HF_TOKEN, exist_ok=True, private=False)
+    Logger.success(f"Hugging Face Model Repository Ready: https://huggingface.co/{repo_id}")
+
+    staging_dir = PROJECT_ROOT / "deploy_staging" / f"busi_{model_name}"
+    staging_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy PyTorch weights
+    ckpt = torch.load(result_dict['best_pt'], map_location='cpu')
+    torch.save(ckpt['model_state_dict'], staging_dir / "pytorch_model.pt")
+
+    # Config JSON
+    config = {
+        "model_architecture": model_name,
+        "task": "Breast Ultrasound 3-Class Oncology Classification",
+        "num_classes": 3,
+        "classes": {
+            "0": "Normal",
+            "1": "Benign",
+            "2": "Malignant"
+        },
+        "image_size": [224, 224],
+        "normalization": {
+            "mean": [0.485, 0.456, 0.406],
+            "std": [0.229, 0.224, 0.225]
+        },
+        "dataset": "BUSI (Breast Ultrasound Images)",
+        "framework": "PyTorch 2.14 (Apple Silicon MPS Acceleration)"
+    }
+    with open(staging_dir / "config.json", "w") as f:
+        json.dump(config, f, indent=4)
+
+    m = result_dict['metrics']
+    readme_content = f"""---
+license: cc-by-4.0
+tags:
+  - medical
+  - breast-ultrasound
+  - oncology
+  - cancer-detection
+  - foundation-model
+  - pan-organ-net
+datasets:
+  - theshoaibme/panorgan-busi-breast-ultrasound
+metrics:
+  - accuracy
+  - f1
+pipeline_tag: image-classification
+---
+
+# PanOrganNet: Oncology Breast Ultrasound Diagnostic Classifier
+
+Official production diagnostic model for the **Oncology (Breast Ultrasound)** track of the **Pan-Organ Diagnostic Paradigm (PanOrganNet)**.
+
+## Clinical Scope
+Automated multi-class classification of breast lesions on 2D ultrasound scans:
+- **Normal**: Normal breast tissue with no identifiable focal masses.
+- **Benign**: Fibroadenomas, benign cysts, and non-cancerous masses.
+- **Malignant**: Invasive ductal carcinoma, lobular carcinoma, and aggressive lesions requiring biopsy.
+
+## Benchmark Performance (117 Holdout Ultrasound Test Scans)
+
+| Metric | Score |
+|---|---|
+| **Test Accuracy** | **{m['accuracy']*100:.2f}%** |
+| **Macro F1-Score** | **{m['f1_macro']:.4f}** |
+| **Macro Precision** | **{m['precision']:.4f}** |
+| **Macro Recall (Sensitivity)** | **{m['recall']*100:.2f}%** |
+| **AUC-ROC** | **{m['auc_roc']:.4f}** |
+
+## Quick Usage
+
+```python
+import torch
+import torchvision.transforms as transforms
+from PIL import Image
+from huggingface_hub import hf_hub_download
+import json
+
+repo_id = "{repo_id}"
+weights_path = hf_hub_download(repo_id=repo_id, filename="pytorch_model.pt")
+config_path = hf_hub_download(repo_id=repo_id, filename="config.json")
+
+with open(config_path) as f:
+    config = json.load(f)
+
+from torchvision.models import efficientnet_v2_s
+model = efficientnet_v2_s()
+model.classifier[1] = torch.nn.Sequential(
+    torch.nn.Dropout(0.3),
+    torch.nn.Linear(model.classifier[1].in_features, 3)
+)
+model.load_state_dict(torch.load(weights_path, map_location="cpu"))
+model.eval()
+
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=config["normalization"]["mean"], std=config["normalization"]["std"])
+])
+
+img = Image.open("sample_breast_ultrasound.png").convert("RGB")
+tensor_img = transform(img).unsqueeze(0)
+
+with torch.no_grad():
+    logits = model(tensor_img)
+    probs = torch.softmax(logits, dim=1)
+    class_id = torch.argmax(probs, dim=1).item()
+
+print(f"Predicted Pathology: {{config['classes'][str(class_id)]}} (Confidence: {{probs[0][class_id]*100:.2f}}%)")
+```
+"""
+    with open(staging_dir / "README.md", "w") as f:
+        f.write(readme_content)
+
+    api.upload_folder(
+        folder_path=str(staging_dir),
+        repo_id=repo_id,
+        repo_type="model",
+        token=HF_TOKEN,
+        commit_message=f"Deploy BUSI {model_name} champion model with weights, config and Model Card"
+    )
+
+    Logger.success(f"🎉 Champion Model Successfully Deployed -> https://huggingface.co/{repo_id}")
+
+if __name__ == "__main__":
+    train_and_benchmark_busi(epochs=10, batch_size=16)

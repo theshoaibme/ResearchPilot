@@ -1,0 +1,33 @@
+{
+    "model_architecture": "EfficientNetV2_S",
+    "num_classes": 4,
+    "classes": {
+        "0": "Normal",
+        "1": "COVID",
+        "2": "Lung_Opacity",
+        "3": "Viral_Pneumonia"
+    },
+    "image_size": [
+        224,
+        224
+    ],
+    "normalization": {
+        "mean": [
+            0.485,
+            0.456,
+            0.406
+        ],
+        "std": [
+            0.229,
+            0.224,
+            0.225
+        ]
+    },
+    "parameters": {
+        "total_parameters": 20182612,
+        "trainable_parameters": 20182612,
+        "total_params_million": 20.18
+    },
+    "input_modality": "Chest X-Ray (CXR)",
+    "framework": "PyTorch 2.14"
+}

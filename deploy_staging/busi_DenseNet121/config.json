@@ -1,0 +1,28 @@
+{
+    "model_architecture": "DenseNet121",
+    "task": "Breast Ultrasound 3-Class Oncology Classification",
+    "num_classes": 3,
+    "classes": {
+        "0": "Normal",
+        "1": "Benign",
+        "2": "Malignant"
+    },
+    "image_size": [
+        224,
+        224
+    ],
+    "normalization": {
+        "mean": [
+            0.485,
+            0.456,
+            0.406
+        ],
+        "std": [
+            0.229,
+            0.224,
+            0.225
+        ]
+    },
+    "dataset": "BUSI (Breast Ultrasound Images)",
+    "framework": "PyTorch 2.14 (Apple Silicon MPS Acceleration)"
+}

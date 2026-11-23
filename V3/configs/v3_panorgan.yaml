@@ -1,0 +1,155 @@
+project:
+  name: "PanOrganNet-V3"
+  version: "3.0.0"
+  seed: 42
+  deterministic: true
+
+storage:
+  drive_root: "/Volumes/Shoaib/PanOrgan_V3"
+  v2_shards_root: "/Volumes/Shoaib/PanOrgan_V2/preprocessed_shards"
+  v1_raw_root: "/Volumes/Shoaib/PanOrgan_V2/V1_archive/dataset/raw"
+  local_cache_dir: "/Volumes/Shoaib/PanOrgan_V3/local_cache"
+  max_local_cache_gb: 50.0
+  shard_size_mb: 256
+  num_workers: 0
+
+modalities:
+  CT:
+    id: 0
+    is_3d: true
+    slab_depth: 5
+    target_size: [256, 256]
+  MRI:
+    id: 1
+    is_3d: true
+    slab_depth: 5
+    target_size: [256, 256]
+  CXR:
+    id: 2
+    is_3d: false
+    slab_depth: 1
+    target_size: [256, 256]
+  US:
+    id: 3
+    is_3d: false
+    slab_depth: 1
+    target_size: [256, 256]
+  MG:
+    id: 4
+    is_3d: false
+    slab_depth: 1
+    target_size: [256, 256]
+
+datasets:
+  tcga_lgg:
+    modality: "MRI"
+    specialty: "neurology_oncology"
+    task: "joint_seg_cls"
+    num_classes: 2
+    prompt_template: "segment and detect lower grade glioma tumor in brain FLAIR MRI"
+  busi:
+    modality: "US"
+    specialty: "oncology_breast"
+    task: "joint_seg_cls"
+    num_classes: 3
+    prompt_template: "segment and classify breast lesion in ultrasound"
+  nih_cxr14:
+    modality: "CXR"
+    specialty: "pulmonology"
+    task: "multilabel_classification"
+    num_classes: 14
+    prompt_template: "classify thoracic pathologies in frontal chest radiograph"
+  pulmonology_cxr:
+    modality: "CXR"
+    specialty: "pulmonology"
+    task: "joint_seg_cls"
+    num_classes: 4
+    max_per_class: 500
+    prompt_template: "segment lung fields and classify normal covid lung opacity or viral pneumonia in chest radiograph"
+  ultrasound_nerve:
+    modality: "US"
+    specialty: "anesthesiology_neck"
+    task: "segmentation"
+    num_classes: 2
+    max_samples: 1500
+    prompt_template: "segment brachial plexus nerve structure in neck ultrasound"
+  prostatex_mri:
+    modality: "MRI"
+    specialty: "urology_oncology"
+    task: "ssl_anatomy"
+    max_samples: 1200
+    prompt_template: "encode prostate multiparametric MRI anatomy"
+  tcga_kirc_ct:
+    modality: "CT"
+    specialty: "nephrology_oncology"
+    task: "ssl_anatomy"
+    max_samples: 1200
+    prompt_template: "encode renal cell carcinoma CT and MRI anatomy"
+
+model:
+  backbone_name: "convnext_small.fb_in22k_ft_in1k_384"
+  pretrained: true
+  embed_dim: 384
+  text_dim: 512
+  num_modalities: 5
+  meta_input_dim: 10
+  slab_depth: 5
+  use_lora: true
+  lora_rank: 8
+  lora_alpha: 16.0
+  use_moe: true
+  num_experts: 4
+  moe_top_k: 2
+  moe_aux_weight: 0.02
+  use_sacr: true
+  masking_mode: "ma_ugm"
+  mask_ratio: 0.65
+  mask_temperature: 0.25
+  ema_decay: 0.996
+  grad_checkpointing: true
+  dropout: 0.25
+
+training:
+  stage1_ssl:
+    epochs: 10
+    lr: 1.5e-4
+    weight_decay: 0.05
+    warmup_epochs: 1
+    sacr_loss_weight: 0.5
+  stage2a_joint:
+    epochs: 18
+    lr: 1.0e-4
+    backbone_lr_mult: 0.25
+    weight_decay: 0.05
+    label_smoothing: 0.05
+    sampling_temperature: 0.5
+    seg_loss_weight: 1.0
+    cls_loss_weight: 3.0
+    sacr_loss_weight: 0.25
+    max_grad_norm: 1.0
+    patience: 6
+  stage2b_head_cal:
+    epochs: 6
+    lr: 2.0e-4
+    weight_decay: 0.05
+    label_smoothing: 0.05
+  gpu_profiles:
+    A100:
+      batch_size: 24
+      grad_accum: 2
+      amp_dtype: "bfloat16"
+    MPS:
+      batch_size: 8
+      grad_accum: 4
+      amp_dtype: "float32"
+    CPU:
+      batch_size: 4
+      grad_accum: 1
+      amp_dtype: "float32"
+
+evaluation:
+  bootstrap_iterations: 1000
+  confidence_level: 0.95
+  conformal_alpha: 0.10
+  ece_bins: 15
+  mnar_truncation_levels: [0.0, 0.2, 0.4]

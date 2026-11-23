@@ -1,7 +1,19 @@
 # ==========================================
+# Credentials & Secrets
+# ==========================================
+kaggle.json
+**/kaggle.json
+.env
+.env.*
+.env.local
+
+# ==========================================
 # Large Medical Imaging Datasets & Raw Binaries
 # ==========================================
 dataset/
+V1/dataset/
+V2/local_cache/
+V2/scratch/
 datasets/
 data/
 *.dcm

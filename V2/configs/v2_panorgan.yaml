@@ -1,0 +1,202 @@
+project:
+  name: "PanOrganNet-V2"
+  version: "2.0.0"
+  seed: 42
+  deterministic: true
+
+storage:
+  drive_root: "/content/drive/MyDrive/ResearchPilot_PanOrgan/V2"
+  local_scratch_dir: "/content/panorgan_scratch"
+  local_cache_dir: "/content/panorgan_cache"
+  max_local_cache_gb: 20.0
+  shard_size_mb: 256
+  num_workers: 2
+  prefetch_factor: 2
+
+modalities:
+  CT:
+    id: 0
+    is_3d: true
+    slab_depth: 5
+    target_size: [256, 256]
+    hu_windows:
+      soft_tissue: [-150.0, 250.0]
+      lung: [-1000.0, 200.0]
+      bone: [200.0, 1000.0]
+  MRI:
+    id: 1
+    is_3d: true
+    slab_depth: 5
+    target_size: [256, 256]
+    clip_percentiles: [1.0, 99.0]
+  CXR:
+    id: 2
+    is_3d: false
+    slab_depth: 1
+    target_size: [384, 384]
+    use_clahe: false
+  US:
+    id: 3
+    is_3d: false
+    slab_depth: 1
+    target_size: [384, 384]
+    despeckle_kernel: 5
+  MG:
+    id: 4
+    is_3d: false
+    slab_depth: 1
+    target_size: [384, 384]
+    use_clahe: false
+
+datasets:
+  amos22_ct:
+    modality: "CT"
+    specialty: "abdominal_radiology"
+    task: "segmentation"
+    num_classes: 16
+    split_mode: "patient_stratified"
+    is_external: false
+    prompt_template: "segment abdominal organs in 3D computed tomography"
+  amos22_mri:
+    modality: "MRI"
+    specialty: "abdominal_radiology"
+    task: "segmentation"
+    num_classes: 16
+    split_mode: "patient_stratified"
+    is_external: true
+    prompt_template: "segment abdominal organs in 3D magnetic resonance imaging"
+  nih_cxr14:
+    modality: "CXR"
+    specialty: "pulmonology"
+    task: "multilabel_classification"
+    num_classes: 14
+    split_mode: "official_patient"
+    is_external: false
+    prompt_template: "classify thoracic pathologies in frontal chest radiograph"
+  rsna_pneumonia_ext:
+    modality: "CXR"
+    specialty: "pulmonology"
+    task: "binary_classification"
+    num_classes: 2
+    split_mode: "external_test_only"
+    is_external: true
+    prompt_template: "detect pneumonia lung opacity in chest radiograph"
+  busi:
+    modality: "US"
+    specialty: "oncology_breast"
+    task: "joint_seg_cls"
+    num_classes: 3
+    seg_classes: 2
+    split_mode: "patient_stratified"
+    is_external: false
+    prompt_template: "segment and classify breast lesion in ultrasound"
+  cbis_ddsm:
+    modality: "MG"
+    specialty: "oncology_mammography"
+    task: "joint_seg_cls"
+    num_classes: 2
+    seg_classes: 2
+    split_mode: "official_patient"
+    is_external: false
+    prompt_template: "segment and classify benign versus malignant breast lesion in mammogram"
+  camus:
+    modality: "US"
+    specialty: "cardiology"
+    task: "segmentation"
+    num_classes: 4
+    split_mode: "patient_stratified"
+    is_external: false
+    prompt_template: "segment left ventricle endocardium epicardium and left atrium in echocardiogram"
+  tcga_lgg:
+    modality: "MRI"
+    specialty: "neurology_oncology"
+    task: "joint_seg_cls"
+    num_classes: 2
+    seg_classes: 2
+    split_mode: "patient_stratified"
+    is_external: false
+    prompt_template: "segment and detect lower grade glioma tumor in brain FLAIR MRI"
+  ultrasound_nerve:
+    modality: "US"
+    specialty: "neurology_peripheral"
+    task: "joint_seg_cls"
+    num_classes: 2
+    seg_classes: 2
+    split_mode: "patient_stratified"
+    is_external: false
+    prompt_template: "segment brachial plexus nerve structure in neck ultrasound"
+
+model:
+  backbone_name: "convnext_small.fb_in22k_ft_in1k_384"
+  pretrained: true
+  embed_dim: 384
+  text_dim: 512
+  num_modalities: 5
+  meta_input_dim: 10
+  slab_depth: 5
+  use_lora: true
+  lora_rank: 8
+  lora_alpha: 16.0
+  use_moe: true
+  num_experts: 4
+  moe_top_k: 2
+  moe_aux_weight: 0.02
+  use_sacr: true
+  masking_mode: "ma_ugm"
+  mask_ratio: 0.65
+  mask_temperature: 0.25
+  ema_decay: 0.996
+  grad_checkpointing: true
+  dropout: 0.2
+
+training:
+  stage1_ssl:
+    epochs: 15
+    lr: 2.0e-4
+    weight_decay: 0.05
+    warmup_epochs: 2
+    sacr_loss_weight: 0.5
+    fov_crop_prob: 0.6
+    fov_min_fraction: 0.5
+  stage2_multitask:
+    epochs: 25
+    lr: 1.0e-4
+    backbone_lr_mult: 0.2
+    weight_decay: 0.02
+    warmup_epochs: 3
+    sampling_temperature: 0.5
+    seg_loss_weight: 1.0
+    cls_loss_weight: 1.0
+    sacr_loss_weight: 0.25
+    max_grad_norm: 1.0
+    checkpoint_every_steps: 500
+    patience: 7
+  gpu_profiles:
+    A100:
+      batch_size: 24
+      grad_accum: 2
+      amp_dtype: "bfloat16"
+    L4:
+      batch_size: 16
+      grad_accum: 3
+      amp_dtype: "bfloat16"
+    T4:
+      batch_size: 8
+      grad_accum: 6
+      amp_dtype: "float16"
+    MPS:
+      batch_size: 8
+      grad_accum: 4
+      amp_dtype: "float32"
+    CPU:
+      batch_size: 4
+      grad_accum: 1
+      amp_dtype: "float32"
+
+evaluation:
+  bootstrap_iterations: 1000
+  confidence_level: 0.95
+  conformal_alpha: 0.10
+  ece_bins: 15
+  mnar_truncation_levels: [0.0, 0.2, 0.4, 0.5]
+  xai_steps: 10

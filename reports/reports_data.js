@@ -98,6 +98,12 @@ window.PANORGAN_REPORTS = {
       ["busi", "109", "0.6356 (0.5805–0.6855)", "0.5211", "53.11"],
       ["Overall", "646", "0.7790 (0.7548–0.8034)", "0.7241", "17.74"]
     ],
+    conformalRows: [
+      ["tcga_lgg", "537", "92.18%", "1.05", "4.66%"],
+      ["busi", "109", "91.74%", "1.29", "29.36%"],
+      ["nih_cxr14", "179", "87.15%", "2.87", "100.00%"],
+      ["Overall", "825", "91.03%", "1.48", "28.61%"]
+    ],
     images: [
       { src: "assets/v2_confusion_matrix.png", caption: "Figure 1: PanOrgan 2 Test Confusion Matrix (n = 825)" },
       { src: "assets/v2_train_val_loss.png", caption: "Figure 2: PanOrgan 2 Training & Validation Loss (10 Epochs)" },
@@ -172,6 +178,14 @@ window.PANORGAN_REPORTS = {
       ["busi", "109", "0.7790 (0.7280–0.8240)", "0.6983", "28.78"],
       ["ultrasound_nerve", "266", "0.6175 (0.5620–0.6680)", "0.5863", "9.77"],
       ["Overall", "1,246", "0.8355 (0.8180–0.8510)", "0.7986", "10.16"]
+    ],
+    conformalRows: [
+      ["nih_cxr14", "179", "100.00%", "1.00", "0.00%"],
+      ["tcga_lgg", "537", "94.41%", "1.00", "0.00%"],
+      ["pulmonology_cxr", "334", "88.92%", "1.00", "0.00%"],
+      ["busi", "109", "93.58%", "1.57", "30.28%"],
+      ["ultrasound_nerve", "266", "92.11%", "3.59", "100.00%"],
+      ["Overall", "1,425", "93.33%", "1.53", "20.98%"]
     ],
     images: [
       { src: "assets/v3_confusion_matrix.png", caption: "Figure 1: PanOrgan 3 Test Confusion Matrix (n = 1,425)" },
@@ -341,14 +355,14 @@ window.PANORGAN_REPORTS = {
       ["busi", "US", "653 (653 pts)", "Breast ultrasound joint seg & cls"],
       ["cbis_ddsm", "MG", "88 (45 pts)", "Mammography pathology"]
     ],
-    trainingNote: "PID 8439 running on Apple M4 GPU (MPS) — Ep 1–5 completed (Ep 6 at 77%). Best composite 0.8737 locked at Ep 4; Ep 3 Pre-Deployment Validation already completed on held-out test split (n = 3,038 cls / 1,804 seg).",
+    trainingNote: "PID 8439 completed all 6 epochs on Apple M4 GPU (MPS) with Early Stopping keeping Ep 4 best checkpoint (composite = 0.8737). Final 6-epoch test evaluation is currently running; held-out test metrics below reflect the verified Ep 3 Pre-Deployment Validation (n = 3,038 cls / 1,804 seg).",
     epochRows: [
       ["1", "2.4145", "3.0026", "0.8781", "0.8396", "78.29%"],
       ["2", "2.3504", "2.9890", "0.8632", "0.8545", "80.19%"],
       ["3 (Validated)", "2.2922", "2.9562", "0.8758", "0.8648", "81.31%"],
       ["4 (Best)", "2.2451", "3.1748", "0.8814", "0.8660", "81.50%"],
       ["5", "2.1670", "3.2087", "0.8783", "0.8675", "81.64%"],
-      ["6", "Running (77%)", "Pending", "Pending", "Pending", "Pending"]
+      ["6 (Early Stop)", "2.1153", "3.2206", "0.8807", "0.8659", "81.50%"]
     ],
     classificationRows: [
       ["AUROC (Ep 3)", "0.9485", "0.9485"],

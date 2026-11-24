@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PanOrgan Technical Report</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-  <script src="reports_data.js?v=202611240902"></script>
+  <script src="reports_data.js?v=202611240949"></script>
   <style>
     :root {
       --text: #111827;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --surface: #f9fafb;
+      --muted: #4b5563;
+      --border: #d1d5db;
+      --surface: #f8fafc;
       --accent: #0f172a;
     }
 
@@ -19,10 +19,10 @@
 
     body {
       margin: 0;
-      padding: 32px 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
-      font-size: 14px;
-      line-height: 1.65;
+      padding: 28px 20px;
+      font-family: "Times New Roman", Times, Georgia, serif;
+      font-size: 14.5px;
+      line-height: 1.6;
       color: var(--text);
       background: #f3f4f6;
       -webkit-font-smoothing: antialiased;
@@ -78,27 +78,27 @@
       background: #ffffff;
       padding: 46px 50px;
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
     }
 
     header {
-      padding-bottom: 16px;
-      margin-bottom: 22px;
-      border-bottom: 1px solid var(--border);
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+      border-bottom: 1.5px solid var(--accent);
     }
 
     h1 {
       margin: 0 0 4px 0;
       font-size: 24px;
       font-weight: 700;
-      letter-spacing: -0.02em;
       color: var(--accent);
     }
 
     .subtitle {
-      font-size: 14px;
+      font-size: 14.5px;
+      font-weight: 600;
       color: var(--muted);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .meta-row {
@@ -111,36 +111,38 @@
 
     .meta-row strong {
       color: var(--text);
-      font-weight: 600;
+      font-weight: 700;
     }
 
     h2 {
-      font-size: 15px;
-      font-weight: 650;
+      font-size: 15.5px;
+      font-weight: 700;
       color: var(--accent);
-      margin: 26px 0 10px 0;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 3px;
+      margin: 22px 0 10px 0;
       page-break-after: avoid;
       break-after: avoid;
     }
 
     h3 {
       font-size: 13.5px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text);
-      margin: 14px 0 8px 0;
+      margin: 12px 0 6px 0;
       page-break-after: avoid;
       break-after: avoid;
     }
 
-    p { margin: 0 0 10px 0; color: #374151; }
-    ol { margin: 6px 0 12px 0; padding-left: 18px; color: #374151; }
-    li { margin-bottom: 6px; }
+    p { margin: 0 0 9px 0; color: #1f2937; text-align: justify; }
+    ol { margin: 6px 0 12px 0; padding-left: 18px; color: #1f2937; }
+    li { margin-bottom: 5px; }
 
     .table-wrap {
       border: 1px solid var(--border);
       border-radius: 10px;
       overflow: hidden;
-      margin: 10px 0 16px 0;
+      margin: 10px 0 14px 0;
       page-break-inside: avoid;
       break-inside: avoid;
     }
@@ -149,47 +151,65 @@
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      font-size: 13px;
+      font-size: 12.5px;
+      table-layout: auto;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
     }
 
     th, td {
-      padding: 9px 12px;
+      padding: 7px 10px;
       text-align: left;
       vertical-align: top;
       border-bottom: 1px solid var(--border);
     }
 
+    td:first-child { font-weight: 700; color: var(--accent); }
     tr:last-child td { border-bottom: none; }
 
     th {
       background: var(--surface);
-      font-weight: 600;
+      font-weight: 700;
       color: var(--accent);
       font-size: 12.5px;
+    }
+
+    .figure-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 10px 0 14px 0;
     }
 
     .diagram-box, .figure-card {
       border: 1px solid var(--border);
       border-radius: 10px;
       background: #ffffff;
-      padding: 16px;
-      margin: 12px 0 16px 0;
+      padding: 10px;
+      margin: 0;
       text-align: center;
       overflow-x: auto;
       page-break-inside: avoid;
       break-inside: avoid;
     }
 
+    .diagram-box {
+      margin: 10px 0 14px 0;
+    }
+
     .figure-card img {
       max-width: 100%;
+      max-height: 240px;
+      width: auto;
       height: auto;
       border-radius: 6px;
       display: block;
-      margin: 0 auto 8px auto;
+      margin: 0 auto 6px auto;
     }
 
     .figure-caption {
-      font-size: 12px;
+      font-size: 11px;
+      font-weight: 700;
       color: var(--muted);
     }
 
@@ -197,36 +217,89 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 11px 14px;
-      margin: 12px 0;
-      font-size: 13px;
-      color: #374151;
+      padding: 10px 14px;
+      margin: 10px 0;
+      font-size: 12.5px;
+      color: #1f2937;
       page-break-inside: avoid;
       break-inside: avoid;
     }
 
+    .diagram-box svg {
+      max-width: 100%;
+      height: auto;
+    }
+
     @page {
-      size: A4;
-      margin: 16mm 15mm 16mm 15mm;
+      size: A4 portrait;
+      margin: 18mm 16mm 18mm 16mm;
     }
 
     @media print {
-      body {
-        background: #ffffff;
-        padding: 0;
-        font-size: 10.5pt;
+      html, body {
+        width: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        font-family: "Times New Roman", Times, Georgia, serif;
+        font-size: 10pt;
+        line-height: 1.48;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
-      .toolbar { display: none; }
+      .toolbar { display: none !important; }
       .page {
-        max-width: 100%;
-        border: none;
-        border-radius: 0;
-        padding: 0;
-        margin: 0;
+        width: auto !important;
+        max-width: 100% !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
       }
-      section { break-inside: avoid-page; }
+      header {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      table {
+        width: 100% !important;
+        font-size: 9.2pt;
+      }
+      th, td {
+        padding: 5px 8px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .diagram-box {
+        padding: 8px;
+        overflow: hidden !important;
+      }
+      .diagram-box svg {
+        max-width: 100% !important;
+        width: 100% !important;
+        height: auto !important;
+      }
+      .figure-grid {
+        gap: 8px;
+        break-inside: auto;
+      }
+      .figure-card, .diagram-box, .table-wrap, .note-box, tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        max-width: 100%;
+      }
+      .figure-card img {
+        max-height: 170px;
+        max-width: 100%;
+        object-fit: contain;
+      }
+      section { break-inside: auto; }
+      h1, h2, h3 {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
     }
   </style>
 </head>
@@ -244,7 +317,7 @@
         startOnLoad: false,
         theme: "base",
         themeVariables: {
-          fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif",
+          fontFamily: "'Times New Roman', Times, Georgia, serif",
           fontSize: "13px",
           lineColor: "#64748b"
         },
@@ -299,12 +372,13 @@
 
     function buildImages(images) {
       if (!images || !images.length) return "";
-      return images.map(img => `
+      const cards = images.map(img => `
         <div class="figure-card">
           <img src="${escapeHtml(img.src)}" alt="${escapeHtml(img.caption)}" />
           <div class="figure-caption">${escapeHtml(img.caption)}</div>
         </div>
       `).join("");
+      return `<div class="figure-grid">${cards}</div>`;
     }
 
     async function renderVersion(versionId) {

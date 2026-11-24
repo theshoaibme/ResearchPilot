@@ -24,10 +24,18 @@ window.PANORGAN_REPORTS = {
       ["Clinical Ontology Alignment", "Structured mapping across 7 clinical domains (Urology, Pulmonology, Cardiology, Hepatology, Nephrology, Gastroenterology, Musculoskeletal).", "Implemented via OntologyPromptEncoder in Version 2+."]
     ],
     datasetsNote: "PanOrgan 1 defined a 3-Tier Data Allocation Strategy separating Tier 1 (Pretraining), Tier 2 (Supervised Multi-Task), and Tier 3 (External Validation) across initial prototype cohorts.",
-    datasetRows: null,
+    datasetHeaders: ["Tier Allocation", "Target Modalities", "Staging Role", "Clinical Scope"],
+    datasetRows: [
+      ["Tier 1: Self-Supervised SSL", "3D CT/MRI, 2D CXR, US", "Unlabeled Anatomical Pretraining", "Multi-organ masked representation learning"],
+      ["Tier 2: Supervised Multi-Task", "MRI, CXR, Ultrasound", "Joint Segmentation & Classification", "Oncology, Pulmonology, Breast & Nerve imaging"],
+      ["Tier 3: External Validation", "Multi-Modal Clinical Cohorts", "Out-of-Distribution Generalization", "Cross-scanner & MNAR missingness evaluation"]
+    ],
     trainingNote: "PanOrgan 1 served as the architectural specification and initial baseline prototype phase. Unified multi-cohort joint training and conformal calibration began in PanOrgan 2.",
+    epochHeaders: null,
+    epochRows: null,
     classificationRows: null,
     segmentationRows: null,
+    conformalRows: null,
     images: [
       { src: "assets/v1_workflow.png", caption: "Figure 1: PanOrgan 1 Prototype Workflow Diagram" },
       { src: "assets/v1_confusion_matrix.png", caption: "Figure 2: PanOrgan 1 Prototype Confusion Matrix" },
@@ -82,7 +90,16 @@ window.PANORGAN_REPORTS = {
       ["nih_cxr14", "CXR", "179 (test)", "Multi-label thoracic classification"],
       ["busi", "US", "109 (test)", "Breast ultrasound segmentation & classification"]
     ],
-    trainingNote: "Trained on Apple M4 GPU (MPS) with external SSD sharding. Post-hoc temperature scaling optimized T = 1.6201 on validation logits, followed by MC2 conformal calibration targeting 90% marginal coverage (alpha = 0.10).",
+    trainingNote: "Trained on Apple M4 GPU (MPS) with external SSD sharding (15 SSL epochs reaching val_loss = 0.0061, followed by 10 Multi-Task epochs reaching best val_loss = 0.8941 at Epoch 3). Post-hoc temperature scaling optimized T = 1.6201 on validation logits, followed by MC2 conformal calibration targeting 90% marginal coverage (alpha = 0.10).",
+    epochHeaders: ["Epoch", "Train Loss", "Val Loss", "Seg Loss", "Cls Loss", "SACR Loss"],
+    epochRows: [
+      ["1", "1.2687", "0.9263", "1.0519", "0.1961", "0.0015"],
+      ["2", "1.1232", "0.9269", "1.0005", "0.1021", "0.0012"],
+      ["3 (Best Val)", "1.0783", "0.8941", "0.9905", "0.0672", "0.0011"],
+      ["5", "1.0391", "0.8963", "0.9779", "0.0408", "0.0010"],
+      ["8", "1.0011", "0.9188", "0.9631", "0.0176", "0.0008"],
+      ["10 (Final)", "0.9898", "0.9592", "0.9590", "0.0105", "0.0007"]
+    ],
     classificationRows: [
       ["AUROC", "0.9062", "0.9002"],
       ["Accuracy", "69.82%", "69.82%"],
@@ -162,6 +179,15 @@ window.PANORGAN_REPORTS = {
       ["busi", "US", "109 (test)", "Breast ultrasound lesion segmentation & classification"]
     ],
     trainingNote: "Stage 1 SSL reached best_val_loss = 0.003693. Stage 2A (batch_size=8, grad_accum=4 on Apple M4 MPS) reached Ep 17 best_composite = 0.8679 (val_dice=0.8350, val_f1=0.9009, val_acc=88.90%). Stage 2B reached Ep 1 best_val_f1 = 0.9017, val_acc=89.18%.",
+    epochHeaders: ["Stage / Epoch", "Train Loss", "Val Dice", "Val Macro-F1", "Val Accuracy", "Composite"],
+    epochRows: [
+      ["S2A Ep 1", "3.8687", "0.6524", "0.7201", "69.94%", "0.6863"],
+      ["S2A Ep 5", "2.6548", "0.7933", "0.8575", "85.86%", "0.8254"],
+      ["S2A Ep 9", "2.4102", "0.8253", "0.8924", "88.26%", "0.8588"],
+      ["S2A Ep 14", "2.2754", "0.8363", "0.8966", "89.04%", "0.8665"],
+      ["S2A Ep 17 (Best)", "2.2329", "0.8350", "0.9009", "88.90%", "0.8679"],
+      ["S2B Ep 1 (Calib)", "Frozen BB", "0.8350", "0.9017", "89.18%", "0.8684"]
+    ],
     classificationRows: [
       ["AUROC", "0.9715", "0.9713"],
       ["Accuracy", "87.93%", "87.93%"],
@@ -309,7 +335,7 @@ window.PANORGAN_REPORTS = {
     limitations: [
       ["Small Mammography Sample Pool (88 samples / 45 pts)", "Solved in PanOrgan 3.2 by adding 2,608 CMMD mammography scans (1,430 patients)."],
       ["Low Unique Patient Count in tcga_kirc_ct (15 pts / 1,200 slices)", "Solved in PanOrgan 3.2 by adding 2,487 Kidney CT Abnormality slices across 829 patients."],
-      ["Temperature Scaling ECE Slight Rise (0.0611 -> 0.0784)", "Addressed in PanOrgan 3.2 with gentler LR (3e-5), balanced sampling, and early stopping."],
+      ["Temperature Scaling ECE Slight Rise (0.0611 -> 0.0784)", "Solved in PanOrgan 3.2 (ECE dropped to 0.0396 at Ep 3 and 0.0479 post-calibration at Ep 4)."],
       ["Unlabeled prostatex_mri (1,198 samples)", "Excluded from supervised loss due to restricted TCIA challenge credentials."]
     ]
   },
@@ -318,28 +344,28 @@ window.PANORGAN_REPORTS = {
     id: "3.2",
     title: "PanOrgan 3.2",
     subtitle: "PanOrgan 3 Cohort — Balanced 20,175-Shard 5-Modality Release",
-    stage: "Version 3.2 (Active Balanced Fine-Tune)",
+    stage: "Version 3.2 (Balanced 5-Modality Release)",
     scope: "All 5 Modalities: MRI, CT, CXR, US, MG (20,175 Shards / 9,381 Patients)",
-    status: "In Progress (PID 8439 — Ep 3/6 Running)",
+    status: "Completed & Evaluated (Ep 3 & Ep 4 Best Checkpoints Verified)",
     overview: [
       "PanOrgan 3.2 (PanOrgan 3 Cohort, Version 3.2) resolves the class imbalance and small-cohort bottlenecks of Version 3.1 without removing any existing data. It adds 2,608 CMMD mammograms (1,430 patients), 2,487 Kidney CT Abnormality slices (829 patients), and 3,345 unused COVID-19 Radiography Class 2/3 CXR scans (3,345 patients), expanding the zero-leakage manifest to 20,175 samples across 9,381 unique patients.",
-      "Training warm-starts from PanOrgan 3.1 best.pt with lr=3e-5 Cosine Annealing, MixUp (alpha=0.2, p=0.25), Class-Weighted Loss, and Early Stopping (patience=2) across 6 epochs."
+      "Training warm-started from PanOrgan 3.1 best.pt with lr=3e-5 Cosine Annealing, MixUp (alpha=0.2, p=0.25), Class-Weighted Loss, and Early Stopping (patience=2) across 6 epochs, achieving peak composite score 0.8737 at Epoch 4 and overall held-out test segmentation Dice 0.8824 (Ep 3) / 0.8800 (Ep 4)."
     ],
     mermaid: `flowchart LR
       A["<b>PanOrgan 3.1</b><br/>11,735 Shards (best.pt)"]:::input --> D["<b>PanOrgan 3.2 Balanced</b><br/>20,175 Shards | 9,381 Patients"]:::core
       B["<b>+ CMMD (MG)</b><br/>2,608 Scans (1,430 pts)"]:::audit --> D
       C["<b>+ Kidney CT & CXR Ext</b><br/>2,487 CT + 3,345 CXR"]:::audit --> D
       D --> E["<b>lr=3e-5 + MixUp + ES</b><br/>12,895 Train / 3,044 Val / 3,227 Test"]:::train
-      E --> F["<b>Active Run (PID 8439)</b><br/>Ep 1-2 Done | Ep 3 Running"]:::out
+      E --> F["<b>Completed (6 Epochs)</b><br/>Seg Dice 0.8824 | AUROC 0.9485"]:::out
       classDef input fill:#eff6ff,stroke:#2563eb,color:#1e3a8a,stroke-width:1.5px;
       classDef audit fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
       classDef core fill:#eef2ff,stroke:#4f46e5,color:#312e81,stroke-width:1.5px;
       classDef train fill:#fefce8,stroke:#ca8a04,color:#713f12,stroke-width:1.5px;
       classDef out fill:#faf5ff,stroke:#9333ea,color:#581c87,stroke-width:1.5px;`,
     architectureRows: [
-      ["Warm-Start & Gentle LR", "Initialized from PanOrgan 3.1 best.pt with lr = 3.0e-5 Cosine Decay + Weight Decay 0.05.", "Ep 1–2 val_loss dropped smoothly (3.0026 -> 2.9890)."],
+      ["Warm-Start & Gentle LR", "Initialized from PanOrgan 3.1 best.pt with lr = 3.0e-5 Cosine Decay + Weight Decay 0.05.", "Completed 6 epochs; val_loss reached minimum 2.9562 at Ep 3 and best composite 0.8737 at Ep 4."],
       ["Balanced Sampling & Loss", "BalancedModalityBatchSampler (alpha=0.35) + Class-Weighted Cross-Entropy + MixUp (0.2, p=0.25).", "Class 2 boosted 690 -> 3,190; Class 3 boosted 500 -> 1,345."],
-      ["Early Stopping & Pre-Deploy Gate", "Early Stopping (patience = 2) + automated validate_predeployment.py after Ep 3 and Ep 6.", "Ep 3 pre-deployment report scheduled ~04:00 AM."]
+      ["Early Stopping & Dual Gate", "Early Stopping (patience = 2) + full held-out test verification at Ep 3 and Ep 6 (evaluating Ep 4 best.pt).", "Both Ep 3 (Dice 0.8824, ECE 0.0396) and Ep 4 (Dice 0.8800, ECE 0.0479) verified."]
     ],
     datasetsNote: "Expanded zero-leakage manifest holds 20,175 samples (12,895 sup train / 3,044 sup val / 3,227 test) across 11 cohorts and 9,381 unique patients (leakage_count = 0).",
     datasetRows: [
@@ -355,30 +381,33 @@ window.PANORGAN_REPORTS = {
       ["busi", "US", "653 (653 pts)", "Breast ultrasound joint seg & cls"],
       ["cbis_ddsm", "MG", "88 (45 pts)", "Mammography pathology"]
     ],
-    trainingNote: "PID 8439 completed all 6 epochs on Apple M4 GPU (MPS) with Early Stopping keeping Ep 4 best checkpoint (composite = 0.8737). Final 6-epoch test evaluation is currently running; held-out test metrics below reflect the verified Ep 3 Pre-Deployment Validation (n = 3,038 cls / 1,804 seg).",
+    trainingNote: "Completed all 6 epochs on Apple M4 GPU (MPS) with Early Stopping retaining the Epoch 4 best checkpoint (composite = 0.8737). Both the Epoch 3 Pre-Deployment Validation (AUROC 0.9485, Macro-F1 0.8574, ECE 0.0396, Dice 0.8824) and the Final Epoch 4 Best Checkpoint Evaluation (AUROC 0.9431, Macro-F1 0.8479, Calibrated ECE 0.0479, Dice 0.8800, HD95 9.52 mm) were verified on the held-out test split (n = 3,038 cls / 1,804 seg).",
     epochRows: [
       ["1", "2.4145", "3.0026", "0.8781", "0.8396", "78.29%"],
       ["2", "2.3504", "2.9890", "0.8632", "0.8545", "80.19%"],
       ["3 (Validated)", "2.2922", "2.9562", "0.8758", "0.8648", "81.31%"],
-      ["4 (Best)", "2.2451", "3.1748", "0.8814", "0.8660", "81.50%"],
+      ["4 (Best Composite)", "2.2451", "3.1748", "0.8814", "0.8660", "81.50%"],
       ["5", "2.1670", "3.2087", "0.8783", "0.8675", "81.64%"],
       ["6 (Early Stop)", "2.1153", "3.2206", "0.8807", "0.8659", "81.50%"]
     ],
+    classificationHeaders: ["Metric", "Ep 3 Validated (T = 1.0238)", "Ep 4 Best Calibrated (T = 1.1851)"],
     classificationRows: [
-      ["AUROC (Ep 3)", "0.9485", "0.9485"],
-      ["Accuracy (Ep 3)", "80.15%", "80.15%"],
-      ["Macro-F1 (Ep 3)", "0.8574", "0.8574"],
-      ["Macro Precision (Ep 3)", "0.8634", "0.8634"],
-      ["Macro Sensitivity (Recall)", "0.8533", "0.8533"],
-      ["ECE (Ep 3)", "0.0396", "0.0396"]
+      ["AUROC", "0.9485", "0.9431"],
+      ["Accuracy", "80.15%", "78.97%"],
+      ["Macro-F1", "0.8574", "0.8479"],
+      ["Macro Precision", "0.8634", "0.8466"],
+      ["Macro Sensitivity (Recall)", "0.8533", "0.8503"],
+      ["Macro Specificity", "0.9210", "0.9176"],
+      ["ECE (Calibrated)", "0.0396", "0.0479"],
+      ["Brier Score (Calibrated)", "0.2848", "0.3253"]
     ],
     segmentationRows: [
-      ["pulmonology_cxr", "334", "0.9697", "0.9420", "—"],
-      ["pulmonology_cxr_ext", "558", "0.9606", "0.9255", "—"],
-      ["tcga_lgg", "537", "0.8954", "0.8617", "—"],
-      ["busi", "109", "0.7677", "0.6871", "—"],
-      ["ultrasound_nerve", "266", "0.6295", "0.5920", "—"],
-      ["Overall (Ep 3)", "1,804", "0.8824", "0.8460", "—"]
+      ["pulmonology_cxr", "334", "0.9707 (0.9680–0.9731)", "0.9440", "7.34"],
+      ["pulmonology_cxr_ext", "558", "0.9611 (0.9585–0.9636)", "0.9267", "9.67"],
+      ["tcga_lgg", "537", "0.8944 (0.8742–0.9121)", "0.8615", "5.95"],
+      ["busi", "109", "0.7691 (0.7188–0.8194)", "0.6900", "35.00"],
+      ["ultrasound_nerve", "266", "0.6125 (0.5574–0.6640)", "0.5794", "8.90"],
+      ["Overall (Ep 4 / Ep 3: 0.8824)", "1,804", "0.8800 (0.8683–0.8913)", "0.8450", "9.52"]
     ],
     conformalRows: [
       ["nih_cxr14", "179", "100.00%", "1.00", "0.00%"],
@@ -391,15 +420,15 @@ window.PANORGAN_REPORTS = {
       ["cbis_ddsm", "15", "100.00%", "3.47", "100.00%"],
       ["tcga_kirc_ct", "189", "77.78%", "3.33", "100.00%"],
       ["ultrasound_nerve", "266", "86.47%", "2.48", "100.00%"],
-      ["Overall (Ep 3)", "3,038", "91.71%", "1.72", "37.29%"]
+      ["Overall (Ep 3 / Ep 4: 90.22%)", "3,038", "91.71%", "1.51", "37.29%"]
     ],
     images: [
-      { src: "assets/v32_train_progress.png", caption: "Figure 1: PanOrgan 3.2 Training & Validation Progress (Ep 1–5 Observed)" },
-      { src: "assets/v32_confusion_matrix.png", caption: "Figure 2: PanOrgan 3.2 Ep 3 Test Confusion Matrix (n = 3,038)" },
-      { src: "assets/v32_precision_recall_metrics.png", caption: "Figure 3: PanOrgan 3.2 Ep 3 Classification Metrics (n = 3,038)" },
-      { src: "assets/v32_segmentation_dice.png", caption: "Figure 4: PanOrgan 3.2 Ep 3 Segmentation Dice & IoU (Overall = 0.8824)" },
-      { src: "assets/v32_conformal_coverage.png", caption: "Figure 5: PanOrgan 3.2 Ep 3 MC2 Conformal Coverage (10 Cohorts)" },
-      { src: "assets/v32_mnar_stress.png", caption: "Figure 6: PanOrgan 3.2 Ep 3 MNAR Missingness Curve (0% -> 20% -> 40%)" },
+      { src: "assets/v32_train_progress.png", caption: "Figure 1: PanOrgan 3.2 Training & Validation Progress (6 Epochs)" },
+      { src: "assets/v32_confusion_matrix.png", caption: "Figure 2: PanOrgan 3.2 Held-Out Test Confusion Matrix (n = 3,038)" },
+      { src: "assets/v32_precision_recall_metrics.png", caption: "Figure 3: PanOrgan 3.2 Test Classification Metrics (n = 3,038)" },
+      { src: "assets/v32_segmentation_dice.png", caption: "Figure 4: PanOrgan 3.2 Segmentation Dice & IoU (n = 1,804)" },
+      { src: "assets/v32_conformal_coverage.png", caption: "Figure 5: PanOrgan 3.2 MC2 Conformal Coverage (10 Cohorts)" },
+      { src: "assets/v32_mnar_stress.png", caption: "Figure 6: PanOrgan 3.2 MNAR Missingness Curve (0% -> 20% -> 40%)" },
       { src: "assets/v32_cohort_distribution.png", caption: "Figure 7: PanOrgan 3.2 Cohort Distribution (20,175 Samples / 9,381 Patients)" },
       { src: "assets/v32_class_balance.png", caption: "Figure 8: Class Distribution Expansion (PanOrgan 3.1 vs 3.2)" },
       { src: "assets/v32_modality_expansion.png", caption: "Figure 9: 5-Modality Sample Expansion (PanOrgan 3.1 vs 3.2)" }
@@ -407,14 +436,63 @@ window.PANORGAN_REPORTS = {
     svgBars: null,
     verificationRows: [
       ["Zero-Leakage Split Audit", "Patient-level split verification across 11 cohorts (9,381 pts)", "Passed (0 leaked patients)"],
-      ["3.2 Training Progress", "PID 8439 on M4 MPS (Ep 1–2 completed, Ep 3 running)", "Active (no_improve = 0/2)"],
-      ["Pre-Deployment Validation", "Automated Ep 3 gate + Final Ep 6 gate", "Scheduled (~04:00 AM & ~10:00 AM)"]
+      ["6-Epoch Balanced Training", "train_v32_balanced.py on Apple M4 MPS", "Completed (Best Composite 0.8737 at Ep 4)"],
+      ["Held-Out Test Evaluation", "v32_ep3_predeployment_validation.json & v32_complete_thesis_report.json", "Verified (Dice 0.8824 / 0.8800, AUROC 0.9485 / 0.9431)"]
     ],
-    robustnessNote: "Status: Training is in progress (PID 8439, Ep 3/6). Automated Ep 3 Pre-Deployment Validation will run right after Ep 3 (~04:00 AM) while Ep 4–6 continue to completion (~10:00 AM).",
+    robustnessNote: "MC2 Conformal Coverage: 91.71% (Ep 3) / 90.22% (Ep 4) marginal coverage across 10 supervised cohorts (n = 3,038). MNAR Stress Curve (Overall Dice, n = 1,804): 0.8824 (0%) -> 0.8806 (20%) -> 0.8400 (40%).",
     limitations: [
-      ["Class 3 Still Smaller Than Class 0/1 (1,345 vs 7,654)", "Handled via Class-Weighted Loss + Balanced Sampling during 3.2 training."],
-      ["Unlabeled prostatex_mri (1,198 samples)", "Excluded from supervised loss due to restricted TCIA challenge credentials."],
-      ["Final Test Metrics Pending", "Awaiting Ep 3 Pre-Deployment Validation (~04:20 AM) and Ep 6 final report (~10:00 AM)."]
+      ["Shared 4-Class Output Head Across Binary & Multi-Class Cohorts", "Addressed in PanOrgan 4 via dedicated task-group classification heads (PanOrgan4MultiHead) and cohort-active class masking."],
+      ["Class 0/1 Cross-Modality Confusion in Newly Added Binary CT/MG Cohorts", "Addressed via per-modality temperature scaling and task-specific linear heads."],
+      ["Unlabeled prostatex_mri (1,198 samples)", "Excluded from supervised loss due to restricted TCIA challenge credentials."]
+    ]
+  },
+  "4": {
+    id: "4",
+    title: "PanOrgan 4",
+    subtitle: "Multi-Head Task-Isolated Foundation Model (100% Supervised 11-Cohort)",
+    stage: "Version 4 (Active Training)",
+    scope: "5 Task-Group Heads & 14-Label Supervision",
+    status: "In Progress (Training Live)",
+    overview: [
+      "PanOrgan 4 resolves the shared 4-class classification bottleneck observed in PanOrgan 3.2 by introducing PanOrgan4MultiHead: a unified PanOrganNetV2 backbone paired with 5 dedicated task-group classification heads (cxr_4class, busi_3class, mg_binary, ct_binary, mri_us_binary) and a 14-label BCEWithLogitsLoss objective.",
+      "Additionally, PanOrgan 4 resolves all previously unlabeled prostatex_mri cases (1,198 / 1,198 matched via official PROSTATEx lesion/clinical labels), bringing the 20,175-sample / 9,381-patient master manifest (master_manifest_v4.parquet) to 100% supervised coverage (0 unlabeled samples)."
+    ],
+    mermaid: `flowchart LR
+    A["PanOrgan 3.2 Backbone<br/>Warm-Start (best.pt)"] --> B["PanOrgan4MultiHead<br/>Shared Encoder + 5 Task Heads"]
+    B --> C["cxr_4class & busi_3class<br/>Multi-Class Thoracic/US"]
+    B --> D["mg_binary, ct_binary, mri_us_binary<br/>Dedicated Binary Screening"]
+    C & D --> E["14-Label BCE + Dice/Focal<br/>Patient-Level 0-Leakage (9,381 pts)"]`,
+    architectureRows: [
+      ["PanOrgan4MultiHead", "Wraps PanOrganNetV2 backbone with 5 isolated task-group heads (cxr_4class, busi_3class, mg_binary, ct_binary, mri_us_binary)", "Implemented (V4/scripts/PanOrgan_4_train.py)"],
+      ["14-Label Supervision", "Replaces collapsed 4-class mapping with task-specific 14-label BCEWithLogitsLoss + per-task masking", "Implemented (master_manifest_v4.parquet)"],
+      ["Isolated PanOrgan_4 SSD Storage", "Dedicated checkpoints, logs, and thesis reports under /Volumes/Shoaib/PanOrgan_4/", "Active (PID 40507, caffeinate + 25-step resume)"]
+    ],
+    datasetsNote: "All 20,175 samples across 9,381 unique patients (Train: 13,707 | Val: 3,241 | Test: 3,227) are 100% supervised (0 unlabeled) with strict patient-level zero-leakage splitting.",
+    datasetHeaders: ["Cohort / Split", "Modality", "Samples", "Clinical Task / Label Mapping"],
+    datasetRows: [
+      ["prostatex_mri (Newly Labeled)", "MRI (Prostate)", "1,198", "1,198 / 1,198 matched via official PROSTATEx labels (mri_us_binary)"],
+      ["pulmonary_cxr + cxr_multiclass", "CXR (Thoracic)", "6,796", "4-class thoracic screening (cxr_4class)"],
+      ["busi_breast_us + ultrasound_nerve", "Ultrasound", "6,389", "3-class breast lesion (busi_3class) + nerve seg/cls (mri_us_binary)"],
+      ["cbis_ddsm + vindr_mammo_mg + cmmd_mg", "Mammography (MG)", "1,852", "Binary breast malignancy screening (mg_binary)"],
+      ["kits23_ct + tcga_kirc_ct + kidney_ct_mri", "CT / Renal", "3,940", "Renal lesion segmentation & binary classification (ct_binary)"],
+      ["Total Supervised Manifest (V4)", "5 Modalities (11 Cohorts)", "20,175 (9,381 pts)", "Train: 13,707 | Val: 3,241 | Test: 3,227 | Unlabeled: 0"]
+    ],
+    trainingNote: "PanOrgan 4 is warm-started from /Volumes/Shoaib/PanOrgan_V3/checkpoints/v32_balanced/best.pt and is currently training live for 6 epochs (Early Stopping patience = 2, 25-step crash-resume checkpointing) on Apple M4 MPS. Final test metrics, MNAR 0/20/40% curves, MC2 conformal coverage, and diagnostic figures will be populated automatically upon completion.",
+    epochRows: null,
+    classificationRows: null,
+    segmentationRows: null,
+    conformalRows: null,
+    images: [],
+    svgBars: null,
+    verificationRows: [
+      ["V4 Label Reconciliation", "V4/scripts/PanOrgan_4_labels.py -> master_manifest_v4.parquet", "Verified (20,175 samples, 9,381 pts, 0 unlabeled)"],
+      ["PROSTATEx Official Label Match", "1,198 / 1,198 prostatex_mri samples matched", "Verified (100% matched)"],
+      ["Live Training Execution", "/Volumes/Shoaib/PanOrgan_4/experiments/panorgan_4_pipeline.log", "In Progress (PID 40507, Epoch 1/6, 25-step resume)"]
+    ],
+    robustnessNote: "PanOrgan 4 training is currently in progress. Upon completion, final held-out test metrics (Dice, AUROC, Macro-F1, ECE, MC2 Conformal Coverage, and MNAR 0/20/40% stress evaluation) will be generated in /Volumes/Shoaib/PanOrgan_4/experiments/thesis_reports/panorgan_4_complete_thesis_report.json.",
+    limitations: [
+      ["Training In Progress (Epoch 1/6)", "Final quantitative metrics, confusion matrices, and diagnostic plots will be added once PanOrgan_4_train.py finishes."],
+      ["Multi-Head Calibration Pending", "Per-task temperature scaling and MC2 conformal calibration run automatically after the final training epoch."]
     ]
   }
 };

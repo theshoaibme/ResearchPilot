@@ -9,10 +9,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-_SSD_ROOT = Path(os.environ.get("PANORGAN_DRIVE_ROOT", "/Volumes/Shoaib/PanOrgan_V3"))
-os.environ.setdefault("HF_HOME", str(_SSD_ROOT / "model_cache" / "hf"))
-os.environ.setdefault("TORCH_HOME", str(_SSD_ROOT / "model_cache" / "torch"))
-os.environ.setdefault("TIMM_CACHE_DIR", str(_SSD_ROOT / "model_cache" / "timm"))
+_V3_SSD = Path("/Volumes/Shoaib/PanOrgan_V3")
+_SSD_ROOT = Path(os.environ.get("PANORGAN_DRIVE_ROOT", "/Volumes/Shoaib/PanOrgan_4"))
+os.environ.setdefault("HF_HOME", str(_V3_SSD / "model_cache" / "hf"))
+os.environ.setdefault("TORCH_HOME", str(_V3_SSD / "model_cache" / "torch"))
+os.environ.setdefault("TIMM_CACHE_DIR", str(_V3_SSD / "model_cache" / "timm"))
 
 import numpy as np
 import pandas as pd
@@ -293,7 +294,7 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=6)
     parser.add_argument("--patience", type=int, default=2)
     parser.add_argument("--checkpoint-every-steps", type=int, default=25)
-    parser.add_argument("--warm-start", type=str, default=str(_SSD_ROOT / "checkpoints" / "v32_balanced" / "best.pt"))
+    parser.add_argument("--warm-start", type=str, default=str(_V3_SSD / "checkpoints" / "v32_balanced" / "best.pt"))
     args = parser.parse_args()
 
     cfg = load_config(REPO_ROOT / "V3/configs/v3_panorgan.yaml")
@@ -301,11 +302,12 @@ def main() -> None:
     runtime = detect_runtime_profile(cfg)
     device = torch.device(runtime.device)
 
-    shards_dir = _SSD_ROOT / "preprocessed_shards"
-    ckpt_dir = _SSD_ROOT / "checkpoints" / "v4_multihead"
+    shards_dir = _V3_SSD / "preprocessed_shards"
+    ckpt_dir = _SSD_ROOT / "checkpoints" / "panorgan_4"
     exp_dir = _SSD_ROOT / "experiments"
-    log_file = exp_dir / "v4_pipeline.log"
+    log_file = exp_dir / "panorgan_4_pipeline.log"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
+    exp_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_path = shards_dir / "master_manifest_v4.parquet"
     if not manifest_path.exists():
@@ -479,7 +481,7 @@ def main() -> None:
     report = run_v4_test_eval(model, val_df, test_df, cache_mgr, mod_map, runtime, device)
     out_dir = exp_dir / "thesis_reports"
     out_dir.mkdir(parents=True, exist_ok=True)
-    atomic_write_json(out_dir / "v4_complete_thesis_report.json", report)
+    atomic_write_json(out_dir / "panorgan_4_complete_thesis_report.json", report)
     log_msg(f"=== PANORGAN 4 COMPLETED: Acc={report['overall_classification']['accuracy']:.4f} | Dice={report['segmentation']['overall']['dice']['mean']:.4f} ===", log_file)
 
 

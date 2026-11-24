@@ -31,11 +31,23 @@ sys.path.insert(0, str(REPO_ROOT / "V3/scripts"))
 from panorgan.config import detect_runtime_profile, load_config, seed_everything
 from panorgan.data import BalancedModalityBatchSampler, PanOrganShardDataset, ShardCacheManager
 from panorgan.evaluation import ModalityConditionalConformal, TemperatureScaler
-from panorgan.evaluation.metrics_and_calibration import expected_calibration_error
 from panorgan.models import PanOrganNetV2
 from panorgan.models.decoders import DiceFocalBoundaryLoss
 from generate_all_thesis_reports import summarize_seg
 from train_v3_pipeline import atomic_torch_save, atomic_write_json, log_msg
+
+
+def _compute_ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
+    conf = probs.max(axis=-1)
+    preds = probs.argmax(axis=-1)
+    acc = (preds == labels).astype(np.float32)
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    ece = 0.0
+    for i in range(n_bins):
+        m = (conf > bins[i]) & (conf <= bins[i + 1])
+        if m.any():
+            ece += float(m.mean()) * abs(float(acc[m].mean()) - float(conf[m].mean()))
+    return float(ece)
 
 TASK_GROUP_MAP: Dict[str, str] = {
     "pulmonology_cxr": "cxr_4class",
@@ -245,7 +257,7 @@ def run_v4_test_eval(
         auc = float(roc_auc_score(t_labels, probs[:, 1])) if TASK_NUM_CLASSES[tg] == 2 else float(
             roc_auc_score(t_labels, probs, multi_class="ovr", average="macro")
         )
-        ece_val = float(expected_calibration_error(probs, t_labels))
+        ece_val = _compute_ece(probs, t_labels)
         per_task_report[tg] = {
             "n": int(len(t_labels)),
             "temperature": float(t_opt),

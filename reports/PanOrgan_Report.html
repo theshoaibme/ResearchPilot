@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PanOrgan Technical Report</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-  <script src="reports_data.js?v=202611230716"></script>
+  <script src="reports_data.js?v=202611240203"></script>
   <style>
     :root {
       --text: #111827;
@@ -353,12 +353,14 @@
         <section>
           <h2>4. Training &amp; Calibration</h2>
           <p>${escapeHtml(data.trainingNote)}</p>
+          ${data.epochRows ? buildTable(["Epoch", "Train Loss", "Val Loss", "Val Dice", "Val Macro-F1", "Val Accuracy"], data.epochRows) : ""}
         </section>
 
         <section>
           <h2>5. Evaluation Metrics &amp; Visuals</h2>
           ${data.classificationRows ? `<h3>Classification &amp; Calibration</h3>${buildTable(["Metric", "Uncalibrated", "Calibrated"], data.classificationRows)}` : ""}
           ${data.segmentationRows ? `<h3>Segmentation (Mean &amp; 95% CI)</h3>${buildTable(["Cohort", "Samples", "Dice (95% CI)", "IoU", "HD95 (mm)"], data.segmentationRows)}` : ""}
+          ${data.conformalRows ? `<h3>MC2 Conformal Coverage (alpha = 0.10)</h3>${buildTable(["Cohort", "Test n", "Coverage", "Avg Set Size", "Abstention Rate"], data.conformalRows)}` : ""}
           ${buildImages(data.images)}
           ${buildSvgBars(data.svgBars)}
           <div class="note-box">${escapeHtml(data.robustnessNote)}</div>
@@ -386,7 +388,7 @@
 
     (function init() {
       const tabs = document.getElementById("versionTabs");
-      ["1", "2", "3", "3.1"].forEach(v => {
+      ["1", "2", "3", "3.1", "3.2"].forEach(v => {
         const btn = document.createElement("button");
         btn.className = "tab-btn";
         btn.dataset.version = v;

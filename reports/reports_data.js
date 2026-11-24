@@ -341,20 +341,54 @@ window.PANORGAN_REPORTS = {
       ["busi", "US", "653 (653 pts)", "Breast ultrasound joint seg & cls"],
       ["cbis_ddsm", "MG", "88 (45 pts)", "Mammography pathology"]
     ],
-    trainingNote: "PID 8439 running on Apple M4 GPU (MPS) with caffeinate protection. Observed Ep 1–2 show steady loss reduction and val_dice 0.8632–0.8781 with zero overfitting.",
+    trainingNote: "PID 8439 running on Apple M4 GPU (MPS) — Ep 1–5 completed (Ep 6 at 77%). Best composite 0.8737 locked at Ep 4; Ep 3 Pre-Deployment Validation already completed on held-out test split (n = 3,038 cls / 1,804 seg).",
     epochRows: [
       ["1", "2.4145", "3.0026", "0.8781", "0.8396", "78.29%"],
       ["2", "2.3504", "2.9890", "0.8632", "0.8545", "80.19%"],
-      ["3–6", "In Progress", "In Progress", "In Progress", "In Progress", "In Progress"]
+      ["3 (Validated)", "2.2922", "2.9562", "0.8758", "0.8648", "81.31%"],
+      ["4 (Best)", "2.2451", "3.1748", "0.8814", "0.8660", "81.50%"],
+      ["5", "2.1670", "3.2087", "0.8783", "0.8675", "81.64%"],
+      ["6", "Running (77%)", "Pending", "Pending", "Pending", "Pending"]
     ],
-    classificationRows: null,
-    segmentationRows: null,
-    conformalRows: null,
+    classificationRows: [
+      ["AUROC (Ep 3)", "0.9485", "0.9485"],
+      ["Accuracy (Ep 3)", "80.15%", "80.15%"],
+      ["Macro-F1 (Ep 3)", "0.8574", "0.8574"],
+      ["Macro Precision (Ep 3)", "0.8634", "0.8634"],
+      ["Macro Sensitivity (Recall)", "0.8533", "0.8533"],
+      ["ECE (Ep 3)", "0.0396", "0.0396"]
+    ],
+    segmentationRows: [
+      ["pulmonology_cxr", "334", "0.9697", "0.9420", "—"],
+      ["pulmonology_cxr_ext", "558", "0.9606", "0.9255", "—"],
+      ["tcga_lgg", "537", "0.8954", "0.8617", "—"],
+      ["busi", "109", "0.7677", "0.6871", "—"],
+      ["ultrasound_nerve", "266", "0.6295", "0.5920", "—"],
+      ["Overall (Ep 3)", "1,804", "0.8824", "0.8460", "—"]
+    ],
+    conformalRows: [
+      ["nih_cxr14", "179", "100.00%", "1.00", "0.00%"],
+      ["tcga_lgg", "537", "94.97%", "1.00", "0.00%"],
+      ["pulmonology_cxr_ext", "558", "94.44%", "1.00", "0.00%"],
+      ["pulmonology_cxr", "334", "91.02%", "1.00", "0.00%"],
+      ["busi", "109", "90.83%", "1.94", "77.06%"],
+      ["cmmd_mg", "437", "89.93%", "1.64", "64.07%"],
+      ["kidney_ct_abn", "414", "92.27%", "1.72", "72.22%"],
+      ["cbis_ddsm", "15", "100.00%", "3.47", "100.00%"],
+      ["tcga_kirc_ct", "189", "77.78%", "3.33", "100.00%"],
+      ["ultrasound_nerve", "266", "86.47%", "2.48", "100.00%"],
+      ["Overall (Ep 3)", "3,038", "91.71%", "1.72", "37.29%"]
+    ],
     images: [
-      { src: "assets/v32_train_progress.png", caption: "Figure 1: PanOrgan 3.2 Observed Training & Validation Progress (Ep 1–2)" },
-      { src: "assets/v32_cohort_distribution.png", caption: "Figure 2: PanOrgan 3.2 Cohort Distribution (20,175 Samples / 9,381 Patients)" },
-      { src: "assets/v32_class_balance.png", caption: "Figure 3: Class Distribution Expansion (PanOrgan 3.1 vs 3.2)" },
-      { src: "assets/v32_modality_expansion.png", caption: "Figure 4: 5-Modality Sample Expansion (PanOrgan 3.1 vs 3.2)" }
+      { src: "assets/v32_train_progress.png", caption: "Figure 1: PanOrgan 3.2 Training & Validation Progress (Ep 1–5 Observed)" },
+      { src: "assets/v32_confusion_matrix.png", caption: "Figure 2: PanOrgan 3.2 Ep 3 Test Confusion Matrix (n = 3,038)" },
+      { src: "assets/v32_precision_recall_metrics.png", caption: "Figure 3: PanOrgan 3.2 Ep 3 Classification Metrics (n = 3,038)" },
+      { src: "assets/v32_segmentation_dice.png", caption: "Figure 4: PanOrgan 3.2 Ep 3 Segmentation Dice & IoU (Overall = 0.8824)" },
+      { src: "assets/v32_conformal_coverage.png", caption: "Figure 5: PanOrgan 3.2 Ep 3 MC2 Conformal Coverage (10 Cohorts)" },
+      { src: "assets/v32_mnar_stress.png", caption: "Figure 6: PanOrgan 3.2 Ep 3 MNAR Missingness Curve (0% -> 20% -> 40%)" },
+      { src: "assets/v32_cohort_distribution.png", caption: "Figure 7: PanOrgan 3.2 Cohort Distribution (20,175 Samples / 9,381 Patients)" },
+      { src: "assets/v32_class_balance.png", caption: "Figure 8: Class Distribution Expansion (PanOrgan 3.1 vs 3.2)" },
+      { src: "assets/v32_modality_expansion.png", caption: "Figure 9: 5-Modality Sample Expansion (PanOrgan 3.1 vs 3.2)" }
     ],
     svgBars: null,
     verificationRows: [

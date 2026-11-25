@@ -1,0 +1,545 @@
+#!/usr/bin/env python3
+"""PanOrgan 4 Optimization: Task-Adapter MLPs, Per-Task Class-Balanced Focal Loss, EMA, Per-Step Warmup Cosine LR, and Threshold-Tuned Calibration."""
+
+from __future__ import annotations
+
+import argparse
+import copy
+import os
+import sys
+import time
+from pathlib import Path
+from typing import Any, Dict, List
+
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+_V3_SSD = Path("/Volumes/Shoaib/PanOrgan_V3")
+_SSD_ROOT = Path(os.environ.get("PANORGAN_DRIVE_ROOT", "/Volumes/Shoaib/PanOrgan_4"))
+os.environ.setdefault("HF_HOME", str(_V3_SSD / "model_cache" / "hf"))
+os.environ.setdefault("TORCH_HOME", str(_V3_SSD / "model_cache" / "torch"))
+os.environ.setdefault("TIMM_CACHE_DIR", str(_V3_SSD / "model_cache" / "timm"))
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_REPO_ROOT / "V2"))
+sys.path.insert(0, str(_REPO_ROOT / "V2" / "scripts"))
+sys.path.insert(0, str(_REPO_ROOT / "V3" / "scripts"))
+sys.path.insert(0, str(_REPO_ROOT / "V4" / "scripts"))
+
+from panorgan.config import detect_runtime_profile, load_config, seed_everything
+from panorgan.data import BalancedModalityBatchSampler, PanOrganShardDataset, ShardCacheManager
+from panorgan.evaluation import ModalityConditionalConformal, TemperatureScaler
+from panorgan.models import PanOrganNetV2
+from panorgan.models.decoders import DiceFocalBoundaryLoss
+from generate_all_thesis_reports import summarize_seg
+from train_v3_pipeline import atomic_torch_save, atomic_write_json, log_msg
+from PanOrgan_4_train import TASK_GROUP_MAP, TASK_NUM_CLASSES, _compute_ece
+
+
+TASK_LOSS_WEIGHT: Dict[str, float] = {
+    "cxr_4class": 1.0,
+    "busi_3class": 1.2,
+    "mri_us_binary": 1.2,
+    "mg_binary": 2.5,
+    "ct_binary": 2.5,
+}
+
+
+class TaskAdapterHead(nn.Module):
+    """Residual MLP task adapter + classifier to prevent cross-modality interference."""
+
+    def __init__(self, embed_dim: int, num_classes: int, dropout: float = 0.30):
+        super().__init__()
+        self.norm_in = nn.LayerNorm(embed_dim)
+        self.adapter = nn.Sequential(
+            nn.Linear(embed_dim, embed_dim),
+            nn.GELU(),
+            nn.LayerNorm(embed_dim),
+            nn.Dropout(dropout),
+        )
+        self.classifier = nn.Linear(embed_dim, num_classes)
+
+    def forward(self, emb: torch.Tensor) -> torch.Tensor:
+        h = self.norm_in(emb)
+        h = h + self.adapter(h)
+        return self.classifier(h)
+
+
+class PanOrgan4MultiHeadOpt(nn.Module):
+    def __init__(self, base: PanOrganNetV2, embed_dim: int = 384, dropout: float = 0.30):
+        super().__init__()
+        self.base = base
+        self.task_heads = nn.ModuleDict({
+            name: TaskAdapterHead(embed_dim, n_cls, dropout=dropout)
+            for name, n_cls in TASK_NUM_CLASSES.items()
+        })
+
+    def forward(self, images: torch.Tensor, meta_vec: torch.Tensor, is_3d: torch.Tensor, prompts: List[str]) -> Dict[str, Any]:
+        out = self.base(images, meta_vec, is_3d, prompts=prompts)
+        emb = out["embedding"]
+        out["task_logits"] = {name: head(emb) for name, head in self.task_heads.items()}
+        return out
+
+
+def compute_task_class_weights(train_df: pd.DataFrame, device: torch.device) -> Dict[str, torch.Tensor]:
+    counts: Dict[str, np.ndarray] = {tg: np.zeros(n_c, dtype=np.float64) for tg, n_c in TASK_NUM_CLASSES.items()}
+    for _, row in train_df.iterrows():
+        ds = str(row["dataset"])
+        lbl = int(row["label"])
+        if lbl < 0 or ds not in TASK_GROUP_MAP:
+            continue
+        tg = TASK_GROUP_MAP[ds]
+        if lbl < TASK_NUM_CLASSES[tg]:
+            counts[tg][lbl] += 1.0
+
+    weights: Dict[str, torch.Tensor] = {}
+    for tg, c in counts.items():
+        c = np.maximum(c, 1.0)
+        # Inverse-sqrt class-balanced weighting normalized to mean=1.0
+        w = (c.sum() / c) ** 0.5
+        w = w / w.mean()
+        weights[tg] = torch.tensor(w, dtype=torch.float32, device=device)
+    return weights
+
+
+def focal_ce_loss(logits: torch.Tensor, target: torch.Tensor, weight: torch.Tensor, gamma: float = 1.5, smoothing: float = 0.03) -> torch.Tensor:
+    ce = F.cross_entropy(logits, target, weight=weight, label_smoothing=smoothing, reduction="none")
+    pt = torch.exp(-F.cross_entropy(logits, target, reduction="none")).clamp(1e-6, 1.0)
+    return (((1.0 - pt) ** gamma) * ce).mean()
+
+
+@torch.no_grad()
+def evaluate_v4(
+    model: PanOrgan4MultiHeadOpt,
+    loader: DataLoader,
+    device: torch.device,
+    seg_crit: nn.Module,
+    cls_weights: Dict[str, torch.Tensor],
+) -> Dict[str, Any]:
+    model.eval()
+    val_loss = 0.0
+    n_batches = 0
+    all_preds, all_labels = [], []
+    dice_scores: List[float] = []
+
+    for batch in loader:
+        images = batch["image"].to(device)
+        meta_vec = batch["meta_vec"].to(device)
+        is_3d = batch["is_3d"].to(device)
+        has_mask = batch["has_mask"].to(device)
+        labels = batch["label"].to(device)
+        datasets = batch["dataset"]
+
+        out = model(images, meta_vec, is_3d, prompts=batch["prompt"])
+        loss = torch.zeros((), device=device)
+
+        if has_mask.any():
+            loss = loss + seg_crit(out["seg_logits"][has_mask], batch["mask"].to(device)[has_mask])
+            preds_m = (out["seg_logits"][has_mask].argmax(dim=1) > 0).float()
+            gt_m = (batch["mask"].to(device)[has_mask] > 0).float()
+            inter = (preds_m * gt_m).sum(dim=(1, 2))
+            union = preds_m.sum(dim=(1, 2)) + gt_m.sum(dim=(1, 2))
+            d = torch.where(union > 0, 2.0 * inter / union, torch.ones_like(union)).cpu().tolist()
+            dice_scores.extend(d)
+
+        cls_losses = []
+        for i, ds in enumerate(datasets):
+            lbl = int(labels[i].item())
+            if lbl < 0:
+                continue
+            tg = TASK_GROUP_MAP[ds]
+            if lbl >= TASK_NUM_CLASSES[tg]:
+                continue
+            logits_i = out["task_logits"][tg][i : i + 1]
+            cls_losses.append(TASK_LOSS_WEIGHT[tg] * focal_ce_loss(logits_i, labels[i : i + 1], cls_weights[tg]))
+            all_preds.append(int(logits_i.argmax(dim=-1).item()))
+            all_labels.append(lbl)
+
+        if cls_losses:
+            loss = loss + 2.0 * torch.stack(cls_losses).mean()
+        val_loss += float(loss.item())
+        n_batches += 1
+
+    val_dice = float(np.mean(dice_scores)) if dice_scores else 0.0
+    val_acc = float(accuracy_score(all_labels, all_preds)) if all_labels else 0.0
+    val_f1 = float(f1_score(all_labels, all_preds, average="macro", zero_division=0)) if all_labels else 0.0
+    comp = 0.5 * val_dice + 0.5 * val_f1
+    return {
+        "val_loss": val_loss / max(n_batches, 1),
+        "val_dice": val_dice,
+        "val_macro_f1": val_f1,
+        "val_acc": val_acc,
+        "composite": comp,
+    }
+
+
+@torch.no_grad()
+def run_v4_test_eval(
+    model: PanOrgan4MultiHeadOpt,
+    val_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+    cache_mgr: ShardCacheManager,
+    mod_map: Dict[str, int],
+    runtime: Any,
+    device: torch.device,
+) -> Dict[str, Any]:
+    model.eval()
+
+    def _collect(df: pd.DataFrame, mnar_trunc: float) -> Dict[str, Any]:
+        ds = PanOrganShardDataset(df, cache_mgr, mod_map, target_hw=(256, 256), augment=False, mnar_truncation=mnar_trunc)
+        loader = DataLoader(ds, batch_size=runtime.batch_size, shuffle=False, num_workers=0)
+        by_group: Dict[str, Dict[str, list]] = {tg: {"logits": [], "labels": [], "cohorts": []} for tg in TASK_NUM_CLASSES}
+        seg_records: Dict[str, List[Dict[str, float]]] = {}
+        for batch in loader:
+            images = batch["image"].to(device)
+            meta_vec = batch["meta_vec"].to(device)
+            is_3d = batch["is_3d"].to(device)
+            has_mask = batch["has_mask"].to(device)
+            labels = batch["label"]
+            datasets = batch["dataset"]
+            out = model(images, meta_vec, is_3d, prompts=batch["prompt"])
+
+            if has_mask.any():
+                preds_m = (out["seg_logits"][has_mask].argmax(dim=1) > 0).cpu().numpy()
+                gt_m = (batch["mask"][has_mask.cpu()].numpy() > 0)
+                has_idx = torch.where(has_mask)[0].cpu().tolist()
+                for k, orig_i in enumerate(has_idx):
+                    p_bin = preds_m[k].astype(np.float32)
+                    g_bin = gt_m[k].astype(np.float32)
+                    inter = float((p_bin * g_bin).sum())
+                    denom = float(p_bin.sum() + g_bin.sum())
+                    union = float(denom - inter)
+                    dice = (2.0 * inter / denom) if denom > 0 else 1.0
+                    iou = (inter / union) if union > 0 else 1.0
+                    seg_records.setdefault(datasets[orig_i], []).append({"dice": dice, "iou": iou, "hd95_mm": 0.0})
+
+            for i, d_name in enumerate(datasets):
+                lbl = int(labels[i].item())
+                if lbl < 0:
+                    continue
+                tg = TASK_GROUP_MAP[d_name]
+                if lbl >= TASK_NUM_CLASSES[tg]:
+                    continue
+                by_group[tg]["logits"].append(out["task_logits"][tg][i].cpu())
+                by_group[tg]["labels"].append(lbl)
+                by_group[tg]["cohorts"].append(d_name)
+        return {"by_group": by_group, "seg_records": seg_records}
+
+    val_res = _collect(val_df, 0.0)
+    test_res = _collect(test_df, 0.0)
+    seg_20 = summarize_seg(_collect(test_df, 0.20)["seg_records"], n_boot=200)
+    seg_40 = summarize_seg(_collect(test_df, 0.40)["seg_records"], n_boot=200)
+
+    per_task_report: Dict[str, Any] = {}
+    all_preds, all_trues = [], []
+    per_cohort_acc: Dict[str, Any] = {}
+
+    for tg in TASK_NUM_CLASSES:
+        if not test_res["by_group"][tg]["logits"]:
+            continue
+        v_logits = torch.stack(val_res["by_group"][tg]["logits"])
+        v_labels = np.array(val_res["by_group"][tg]["labels"])
+        t_logits = torch.stack(test_res["by_group"][tg]["logits"])
+        t_labels = np.array(test_res["by_group"][tg]["labels"])
+        t_cohorts = np.array(test_res["by_group"][tg]["cohorts"])
+
+        scaler = TemperatureScaler()
+        t_opt = scaler.fit(v_logits, torch.from_numpy(v_labels))
+        v_probs = np.asarray(scaler.transform_probs(v_logits))
+        probs = np.asarray(scaler.transform_probs(t_logits))
+
+        best_thr = 0.50
+        if TASK_NUM_CLASSES[tg] == 2:
+            best_f1 = -1.0
+            for thr in np.linspace(0.30, 0.70, 41):
+                vp = (v_probs[:, 1] >= thr).astype(int)
+                f1_v = float(f1_score(v_labels, vp, average="macro", zero_division=0))
+                if f1_v > best_f1:
+                    best_f1 = f1_v
+                    best_thr = float(thr)
+            preds = (probs[:, 1] >= best_thr).astype(int)
+        else:
+            preds = probs.argmax(axis=-1)
+
+        cp = ModalityConditionalConformal(alpha=0.10)
+        cp.fit(v_probs, v_labels, val_res["by_group"][tg]["cohorts"])
+        cp_cov = cp.evaluate_coverage(probs, t_labels, t_cohorts.tolist())
+
+        all_preds.extend(preds.tolist())
+        all_trues.extend(t_labels.tolist())
+
+        for c in sorted(set(t_cohorts.tolist())):
+            idx = t_cohorts == c
+            per_cohort_acc[c] = {"n": int(idx.sum()), "accuracy": round(float((preds[idx] == t_labels[idx]).mean()), 4)}
+
+        auc = float(roc_auc_score(t_labels, probs[:, 1])) if TASK_NUM_CLASSES[tg] == 2 else float(
+            roc_auc_score(t_labels, probs, multi_class="ovr", average="macro")
+        )
+        ece_val = _compute_ece(probs, t_labels)
+        per_task_report[tg] = {
+            "n": int(len(t_labels)),
+            "temperature": float(t_opt),
+            "decision_threshold": float(best_thr),
+            "accuracy": float(accuracy_score(t_labels, preds)),
+            "macro_f1": float(f1_score(t_labels, preds, average="macro", zero_division=0)),
+            "auroc": auc,
+            "ece": ece_val,
+            "confusion_matrix": confusion_matrix(t_labels, preds).tolist(),
+            "per_class_report": classification_report(t_labels, preds, output_dict=True, zero_division=0),
+            "mc2_conformal": cp_cov,
+        }
+
+    overall_cls = {
+        "n_samples": int(len(all_trues)),
+        "accuracy": float(accuracy_score(all_trues, all_preds)),
+        "macro_f1": float(f1_score(all_trues, all_preds, average="macro", zero_division=0)),
+        "precision_macro": float(precision_score(all_trues, all_preds, average="macro", zero_division=0)),
+        "recall_macro": float(recall_score(all_trues, all_preds, average="macro", zero_division=0)),
+    }
+    seg_0 = summarize_seg(test_res["seg_records"], n_boot=200)
+    return {
+        "model": "PanOrgan_4_MultiHead",
+        "overall_classification": overall_cls,
+        "per_task_group": per_task_report,
+        "per_cohort_accuracy": per_cohort_acc,
+        "segmentation": seg_0,
+        "mnar_stress_curve": {"0": seg_0, "20": seg_20, "40": seg_40},
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default=str(_REPO_ROOT / "V3" / "configs" / "v3_panorgan.yaml"))
+    parser.add_argument("--warm-start", default=str(_SSD_ROOT / "checkpoints" / "panorgan_4" / "best.pt"))
+    parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--patience", type=int, default=2)
+    parser.add_argument("--checkpoint-every-steps", type=int, default=25)
+    args = parser.parse_args()
+
+    cfg = load_config(Path(args.config))
+    seed_everything(int(cfg.get("seed", 42)))
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    runtime = detect_runtime_profile(cfg)
+
+    shards_dir = _V3_SSD / "preprocessed_shards"
+    ckpt_dir = _SSD_ROOT / "checkpoints" / "panorgan_4"
+    exp_dir = _SSD_ROOT / "experiments"
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    exp_dir.mkdir(parents=True, exist_ok=True)
+    log_file = exp_dir / "panorgan_4_pipeline.log"
+
+    manifest_path = shards_dir / "master_manifest_v4.parquet"
+    df = pd.read_parquet(manifest_path)
+    df = df[df["label"] >= 0].reset_index(drop=True)
+    train_df = df[df["split"] == "train"].reset_index(drop=True)
+    val_df = df[df["split"] == "val"].reset_index(drop=True)
+    test_df = df[df["split"] == "test"].reset_index(drop=True)
+
+    cls_weights = compute_task_class_weights(train_df, device)
+    log_msg(f"PanOrgan 4 Class Weights: " + ", ".join(f"{k}={w.cpu().numpy().round(2).tolist()}" for k, w in cls_weights.items()), log_file)
+
+    mod_map = {k: int(v["id"]) for k, v in cfg["modalities"].items()}
+    cache_mgr = ShardCacheManager(shards_dir, shards_dir, max_cache_gb=100.0)
+
+    train_ds = PanOrganShardDataset(train_df, cache_mgr, mod_map, target_hw=(256, 256), augment=True, mnar_truncation=0.20)
+    val_ds = PanOrganShardDataset(val_df, cache_mgr, mod_map, target_hw=(256, 256), augment=False)
+    sampler = BalancedModalityBatchSampler(train_df["dataset"].tolist(), batch_size=runtime.batch_size, temperature_alpha=0.30)
+    train_loader = DataLoader(train_ds, batch_sampler=sampler, num_workers=0)
+    val_loader = DataLoader(val_ds, batch_size=runtime.batch_size, shuffle=False, num_workers=0)
+
+    base_model = PanOrganNetV2.from_config(cfg)
+    model = PanOrgan4MultiHeadOpt(base_model, embed_dim=int(cfg["model"].get("embed_dim", 384)), dropout=0.30).to(device)
+
+    ws_path = Path(args.warm_start)
+    st = torch.load(ws_path, map_location="cpu", weights_only=False)
+    sd = st["model_state_dict"]
+    # Load PanOrgan 4 base backbone + copy linear classifier weights into TaskAdapterHead.classifier
+    base_sd = {k[len("base."):]: v for k, v in sd.items() if k.startswith("base.")}
+    model.base.load_state_dict(base_sd, strict=False)
+    for tg in TASK_NUM_CLASSES:
+        w_key = f"task_heads.{tg}.2.weight"
+        b_key = f"task_heads.{tg}.2.bias"
+        if w_key in sd and b_key in sd:
+            model.task_heads[tg].classifier.weight.data.copy_(sd[w_key])
+            model.task_heads[tg].classifier.bias.data.copy_(sd[b_key])
+    log_msg(f"Warm-started PanOrgan 4 from {ws_path}", log_file)
+
+    # EMA model for smoothed validation/test weights
+    ema_model = copy.deepcopy(model).eval()
+    for p in ema_model.parameters():
+        p.requires_grad_(False)
+    ema_decay = 0.998
+
+    optimizer = torch.optim.AdamW([
+        {"params": model.base.parameters(), "lr": 1.5e-5, "weight_decay": 0.05},
+        {"params": model.task_heads.parameters(), "lr": 1.5e-4, "weight_decay": 0.08},
+    ])
+    total_steps = max(1, (len(train_loader) // max(1, runtime.grad_accum)) * args.epochs)
+    warmup_steps = max(10, int(0.10 * total_steps))
+
+    def _lr_lambda(step: int) -> float:
+        if step < warmup_steps:
+            return float(step + 1) / float(warmup_steps)
+        progress = float(step - warmup_steps) / float(max(1, total_steps - warmup_steps))
+        return max(0.05, 0.5 * (1.0 + np.cos(np.pi * progress)))
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=_lr_lambda)
+    seg_crit = DiceFocalBoundaryLoss().to(device)
+
+    best_path = ckpt_dir / "best.pt"
+    latest_path = ckpt_dir / "latest_opt.pt"
+    start_epoch = 1
+    best_comp = -1.0
+    no_improve = 0
+    resume_b = -1
+    global_step = 0
+    history: Dict[str, list] = {"train_loss": [], "val_loss": [], "val_dice": [], "val_f1": [], "val_acc": [], "composite": []}
+
+    if latest_path.exists():
+        ck = torch.load(latest_path, map_location=device, weights_only=False)
+        model.load_state_dict(ck["model_state_dict"])
+        if "ema_state_dict" in ck:
+            ema_model.load_state_dict(ck["ema_state_dict"])
+        if "optimizer_state_dict" in ck:
+            optimizer.load_state_dict(ck["optimizer_state_dict"])
+        if "scheduler_state_dict" in ck:
+            scheduler.load_state_dict(ck["scheduler_state_dict"])
+        best_comp = float(ck.get("best_composite", -1.0))
+        no_improve = int(ck.get("no_improve", 0))
+        global_step = int(ck.get("global_step", 0))
+        history = ck.get("history", history)
+        if ck.get("mid_epoch", False):
+            start_epoch = int(ck["epoch"])
+            resume_b = int(ck.get("batch_idx", -1))
+            log_msg(f"[RESUME V4] Epoch {start_epoch}/{args.epochs} from batch {resume_b + 1}", log_file)
+        else:
+            start_epoch = int(ck["epoch"]) + 1
+
+    for epoch in range(start_epoch, args.epochs + 1):
+        if hasattr(train_loader.batch_sampler, "set_epoch"):
+            train_loader.batch_sampler.set_epoch(epoch)
+        model.train()
+        optimizer.zero_grad(set_to_none=True)
+        run_loss, n_b = 0.0, 0
+
+        for b_idx, batch in enumerate(tqdm(train_loader, desc=f"[PanOrgan 4] Ep {epoch}/{args.epochs}", leave=False)):
+            if epoch == start_epoch and b_idx <= resume_b:
+                continue
+            images = batch["image"].to(device)
+            meta_vec = batch["meta_vec"].to(device)
+            is_3d = batch["is_3d"].to(device)
+            has_mask = batch["has_mask"].to(device)
+            labels = batch["label"].to(device)
+            multilabel = batch["multilabel"].to(device)
+            datasets = batch["dataset"]
+
+            out = model(images, meta_vec, is_3d, prompts=batch["prompt"])
+            total = torch.zeros((), device=device)
+
+            if has_mask.any():
+                total = total + 1.0 * seg_crit(out["seg_logits"][has_mask], batch["mask"].to(device)[has_mask])
+
+            cls_losses = []
+            for i, d_name in enumerate(datasets):
+                lbl = int(labels[i].item())
+                if lbl < 0:
+                    continue
+                tg = TASK_GROUP_MAP[d_name]
+                if lbl >= TASK_NUM_CLASSES[tg]:
+                    continue
+                cls_losses.append(TASK_LOSS_WEIGHT[tg] * focal_ce_loss(out["task_logits"][tg][i : i + 1], labels[i : i + 1], cls_weights[tg]))
+            if cls_losses:
+                total = total + 2.0 * torch.stack(cls_losses).mean()
+
+            valid_ml = multilabel >= 0
+            if valid_ml.any():
+                total = total + 1.0 * F.binary_cross_entropy_with_logits(out["multilabel_logits"][valid_ml], multilabel[valid_ml])
+
+            if out.get("pred_coords") is not None:
+                total = total + 0.25 * F.smooth_l1_loss(out["pred_coords"], batch["body_coord"].to(device))
+            total = total + float(cfg["model"]["moe_aux_weight"]) * out["moe_aux_loss"]
+
+            (total / max(1, runtime.grad_accum)).backward()
+            run_loss += float(total.detach().item())
+            n_b += 1
+
+            if ((b_idx + 1) % runtime.grad_accum == 0) or ((b_idx + 1) == len(train_loader)):
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad(set_to_none=True)
+                global_step += 1
+
+                with torch.no_grad():
+                    for p_ema, p in zip(ema_model.parameters(), model.parameters()):
+                        p_ema.data.mul_(ema_decay).add_(p.data, alpha=1.0 - ema_decay)
+
+                if global_step % args.checkpoint_every_steps == 0:
+                    atomic_torch_save({
+                        "epoch": epoch, "mid_epoch": True, "batch_idx": b_idx, "global_step": global_step,
+                        "model_state_dict": model.state_dict(), "ema_state_dict": ema_model.state_dict(),
+                        "optimizer_state_dict": optimizer.state_dict(), "scheduler_state_dict": scheduler.state_dict(),
+                        "best_composite": best_comp, "no_improve": no_improve, "history": history,
+                    }, latest_path)
+
+        resume_b = -1
+        metrics = evaluate_v4(ema_model, val_loader, device, seg_crit, cls_weights)
+        tr_l = run_loss / max(n_b, 1)
+        history["train_loss"].append(tr_l)
+        history["val_loss"].append(metrics["val_loss"])
+        history["val_dice"].append(metrics["val_dice"])
+        history["val_f1"].append(metrics["val_macro_f1"])
+        history["val_acc"].append(metrics["val_acc"])
+        history["composite"].append(metrics["composite"])
+
+        is_best = metrics["composite"] > best_comp
+        if is_best:
+            best_comp = metrics["composite"]
+            no_improve = 0
+        else:
+            no_improve += 1
+
+        st_out = {"epoch": epoch, "model_state_dict": ema_model.state_dict(), "ema_state_dict": ema_model.state_dict(), "best_composite": best_comp, "history": history}
+        atomic_torch_save(st_out, latest_path)
+        if is_best:
+            atomic_torch_save(st_out, best_path)
+            fp16_state = {k: v.half() if v.is_floating_point() else v for k, v in ema_model.state_dict().items()}
+            atomic_torch_save({"model_state_dict": fp16_state}, ckpt_dir / "best_fp16.pt")
+        atomic_write_json(ckpt_dir / "training_history.json", history)
+
+        log_msg(
+            f"[PanOrgan 4 Ep {epoch}/{args.epochs}] train_loss={tr_l:.4f} | val_loss={metrics['val_loss']:.4f} | "
+            f"val_dice={metrics['val_dice']:.4f} | val_f1={metrics['val_macro_f1']:.4f} | "
+            f"val_acc={metrics['val_acc']:.4f} (best={best_comp:.4f}, no_improve={no_improve}/{args.patience})",
+            log_file,
+        )
+        if no_improve >= args.patience:
+            log_msg(f"[EARLY STOPPING V4] Triggered at Epoch {epoch}.", log_file)
+            break
+
+    log_msg("=== Running PanOrgan 4 Per-Task Test Evaluation (Optimized EMA + Threshold Tuned) ===", log_file)
+    st_b = torch.load(best_path, map_location=device, weights_only=False)
+    ema_model.load_state_dict(st_b["model_state_dict"], strict=False)
+    report = run_v4_test_eval(ema_model, val_df, test_df, cache_mgr, mod_map, runtime, device)
+    out_dir = exp_dir / "thesis_reports"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(out_dir / "panorgan_4_complete_thesis_report.json", report)
+    log_msg(f"=== PANORGAN 4 OPTIMIZED COMPLETED: Acc={report['overall_classification']['accuracy']:.4f} | Dice={report['segmentation']['overall']['dice']['mean']:.4f} ===", log_file)
+
+
+if __name__ == "__main__":
+    main()

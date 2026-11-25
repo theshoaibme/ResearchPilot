@@ -128,12 +128,11 @@ def evaluate_v4(
         if has_mask.any():
             seg_l = seg_crit(out["seg_logits"][has_mask], batch["mask"].to(device)[has_mask])
             loss = loss + seg_l
-            probs_m = torch.sigmoid(out["seg_logits"][has_mask, 0])
-            preds_m = (probs_m > 0.5).float()
-            gt_m = batch["mask"].to(device)[has_mask]
+            preds_m = (out["seg_logits"][has_mask].argmax(dim=1) > 0).float()
+            gt_m = (batch["mask"].to(device)[has_mask] > 0).float()
             inter = (preds_m * gt_m).sum(dim=(1, 2))
             union = preds_m.sum(dim=(1, 2)) + gt_m.sum(dim=(1, 2))
-            d = ((2.0 * inter + 1e-6) / (union + 1e-6)).cpu().tolist()
+            d = torch.where(union > 0, 2.0 * inter / union, torch.ones_like(union)).cpu().tolist()
             dice_scores.extend(d)
 
         # Route each sample to its dedicated task head
@@ -186,7 +185,7 @@ def run_v4_test_eval(
         ds = PanOrganShardDataset(df, cache_mgr, mod_map, target_hw=(256, 256), augment=False, mnar_truncation=mnar_trunc)
         loader = DataLoader(ds, batch_size=runtime.batch_size, shuffle=False, num_workers=0)
         by_group: Dict[str, Dict[str, list]] = {tg: {"logits": [], "labels": [], "cohorts": []} for tg in TASK_NUM_CLASSES}
-        seg_records: List[Dict[str, Any]] = []
+        seg_records: Dict[str, List[Dict[str, float]]] = {}
         for batch in loader:
             images = batch["image"].to(device)
             meta_vec = batch["meta_vec"].to(device)
@@ -197,17 +196,18 @@ def run_v4_test_eval(
             out = model(images, meta_vec, is_3d, prompts=batch["prompt"])
 
             if has_mask.any():
-                probs_m = torch.sigmoid(out["seg_logits"][has_mask, 0]).cpu().numpy()
-                gt_m = batch["mask"][has_mask].numpy()
+                preds_m = (out["seg_logits"][has_mask].argmax(dim=1) > 0).cpu().numpy()
+                gt_m = (batch["mask"][has_mask.cpu()].numpy() > 0)
                 has_idx = torch.where(has_mask)[0].cpu().tolist()
                 for k, orig_i in enumerate(has_idx):
-                    p_bin = (probs_m[k] > 0.5).astype(np.float32)
+                    p_bin = preds_m[k].astype(np.float32)
                     g_bin = gt_m[k].astype(np.float32)
                     inter = float((p_bin * g_bin).sum())
-                    union = float(p_bin.sum() + g_bin.sum() - inter)
-                    dice = (2.0 * inter + 1e-6) / (p_bin.sum() + g_bin.sum() + 1e-6)
-                    iou = (inter + 1e-6) / (union + 1e-6)
-                    seg_records.append({"dataset": datasets[orig_i], "dice": dice, "iou": iou, "hd95_mm": 0.0})
+                    denom = float(p_bin.sum() + g_bin.sum())
+                    union = float(denom - inter)
+                    dice = (2.0 * inter / denom) if denom > 0 else 1.0
+                    iou = (inter / union) if union > 0 else 1.0
+                    seg_records.setdefault(datasets[orig_i], []).append({"dice": dice, "iou": iou, "hd95_mm": 0.0})
 
             for i, d_name in enumerate(datasets):
                 lbl = int(labels[i].item())
@@ -241,7 +241,7 @@ def run_v4_test_eval(
 
         scaler = TemperatureScaler()
         t_opt = scaler.fit(v_logits, torch.from_numpy(v_labels))
-        probs = scaler.transform_probs(t_logits).numpy()
+        probs = np.asarray(scaler.transform_probs(t_logits))
         preds = probs.argmax(axis=-1)
 
         cp = ModalityConditionalConformal(alpha=0.10)

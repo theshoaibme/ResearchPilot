@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PanOrgan 4 — Clinical Multi-Modal AI Studio</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card: #111827;
+      --border: #1f2937;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #06b6d4;
+      --accent-2: #3b82f6;
+      --ok: #10b981;
+      --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+    .wrap { max-width: 1260px; margin: 0 auto; }
+    header {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; gap: 12px;
+    }
+    h1 { margin: 0; font-size: 22px; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .badge {
+      background: rgba(6,182,212,0.14); color: var(--accent); border: 1px solid rgba(6,182,212,0.35);
+      padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
+    }
+    .grid { display: grid; grid-template-columns: 370px 1fr; gap: 18px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+    }
+    h2 { margin: 0 0 10px 0; font-size: 14.5px; color: #e5e7eb; }
+    .demo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
+    .demo-card {
+      border: 1px solid var(--border); border-radius: 8px; padding: 7px; cursor: pointer;
+      background: #0f172a; transition: border-color 0.15s; text-align: center;
+    }
+    .demo-card:hover, .demo-card.active { border-color: var(--accent); }
+    .demo-card img { width: 100%; height: 78px; object-fit: cover; border-radius: 5px; display: block; margin-bottom: 5px; }
+    .demo-title { font-size: 11px; font-weight: 600; color: #e5e7eb; }
+    .demo-mod { font-size: 10px; color: var(--accent); }
+    label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+    select, input[type="text"], input[type="file"] {
+      width: 100%; background: #0f172a; color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 10px; font-size: 13px;
+    }
+    button.run-btn {
+      width: 100%; margin-top: 12px; padding: 10px; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff;
+      font-weight: 700; font-size: 14px; cursor: pointer;
+    }
+    button.run-btn:disabled { opacity: 0.6; cursor: wait; }
+    .vis-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+    .vis-box {
+      background: #0f172a; border: 1px solid var(--border); border-radius: 10px; padding: 9px; text-align: center;
+    }
+    .vis-box img { width: 100%; max-height: 245px; object-fit: contain; border-radius: 6px; background: #000; }
+    .vis-cap { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .kpi { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+    .kpi-lbl { font-size: 11px; color: var(--muted); }
+    .kpi-val { font-size: 15px; font-weight: 700; margin-top: 3px; color: var(--ok); }
+    .kpi-val.warn { color: var(--warn); }
+    .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 720px) { .sub-grid, .kpi-row { grid-template-columns: 1fr; } }
+    .prob-row { margin-bottom: 8px; }
+    .prob-head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+    .bar-bg { height: 7px; background: #1f2937; border-radius: 999px; overflow: hidden; }
+    .bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+    .param-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .param-table td { padding: 5px 6px; border-bottom: 1px solid var(--border); }
+    .param-table td:first-child { color: var(--muted); }
+    .status-note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>PanOrgan 4 — Clinical Multi-Modal AI Studio</h1>
+        <div class="sub">Daffodil International University (CSE499 FYDP) &bull; Direct PyTorch Inference, Multi-Scale Calibration &amp; Segmentation</div>
+      </div>
+      <div class="badge" id="modelMetricsBadge">Loading Model Metrics...</div>
+    </header>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>1. Demo Medical Scans (Test Split)</h2>
+        <div class="demo-grid" id="demoGrid"></div>
+
+        <h2>2. Or Upload Custom Scan</h2>
+        <input type="file" id="fileInput" accept="image/*" />
+        <label>Cohort / Task Head</label>
+        <select id="cohortSelect">
+          <option value="pulmonology_cxr">Chest X-Ray (4-Class Thoracic)</option>
+          <option value="busi">Breast Ultrasound (3-Class BUSI)</option>
+          <option value="cmmd_mg">Mammography (CMMD Binary MG)</option>
+          <option value="kidney_ct_abn">Renal CT (Abnormality Binary CT)</option>
+          <option value="tcga_lgg">Brain MRI (TCGA-LGG Glioma)</option>
+          <option value="ultrasound_nerve">Nerve Ultrasound (Seg + Binary)</option>
+        </select>
+
+        <label>Modality</label>
+        <select id="modalitySelect">
+          <option value="CXR">CXR</option>
+          <option value="US">US</option>
+          <option value="MG">MG</option>
+          <option value="CT">CT</option>
+          <option value="MRI">MRI</option>
+        </select>
+
+        <label>Custom Clinical Ontology Prompt (Editable)</label>
+        <input type="text" id="promptInput" placeholder="Type custom clinical prompt..." />
+
+        <button class="run-btn" id="runBtn" onclick="runInference()">Run PanOrgan 4 Inference</button>
+        <div class="status-note" id="statusNote">Initializing...</div>
+      </div>
+
+      <div class="panel">
+        <h2>Live Diagnostic Output &amp; Disease Detection</h2>
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-lbl">Disease / Diagnosis</div><div class="kpi-val" id="predLabel">—</div></div>
+          <div class="kpi"><div class="kpi-lbl">Ground Truth (Demo)</div><div class="kpi-val" id="trueLabel">—</div></div>
+          <div class="kpi"><div class="kpi-lbl">Segmented Area</div><div class="kpi-val" id="segArea">—</div></div>
+          <div class="kpi"><div class="kpi-lbl">Latency / Device</div><div class="kpi-val" id="latencyVal">—</div></div>
+        </div>
+
+        <div class="vis-row">
+          <div class="vis-box">
+            <img id="origImg" src="" alt="Original Scan" />
+            <div class="vis-cap">Input Scan (Center Slice)</div>
+          </div>
+          <div class="vis-box">
+            <img id="overlayImg" src="" alt="Segmentation Overlay" />
+            <div class="vis-cap">PanOrgan 4 Segmentation Mask Overlay</div>
+          </div>
+        </div>
+
+        <div class="sub-grid">
+          <div>
+            <h2>Calibrated Task Probabilities</h2>
+            <div id="probsBox"></div>
+            <h2 style="margin-top:14px;">All Model Parameters</h2>
+            <table class="param-table" id="paramsTable"></table>
+          </div>
+          <div>
+            <h2>Multi-Label Pathology Screening (Top 6)</h2>
+            <div id="findingsBox"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top: 18px;">
+      <h2>PanOrgan 4 — Comprehensive Evaluation Metrics, Calibration &amp; Performance Graphs</h2>
+      <div class="kpi-row" id="overallMetricsRow" style="margin-bottom: 14px;"></div>
+      <div class="vis-row" style="margin-bottom: 16px;">
+        <div class="vis-box"><img src="/static/plots/v4_train_history.png" alt="Training History" /><div class="vis-cap">Training History (Loss, Accuracy, Macro-F1, Dice)</div></div>
+        <div class="vis-box"><img src="/static/plots/v4_per_head_metrics.png" alt="Per-Head Metrics" /><div class="vis-cap">Per-Head Accuracy, Macro-F1 &amp; AUROC</div></div>
+        <div class="vis-box"><img src="/static/plots/v4_cohort_accuracy.png" alt="Cohort Accuracy" /><div class="vis-cap">Held-Out Test Accuracy Across Cohorts</div></div>
+        <div class="vis-box"><img src="/static/plots/v4_confusion_matrices.png" alt="Confusion Matrices" /><div class="vis-cap">Held-Out Test Confusion Matrices</div></div>
+        <div class="vis-box"><img src="/static/plots/v4_calibration_ece.png" alt="Calibration ECE" /><div class="vis-cap">Expected Calibration Error (ECE) per Head</div></div>
+        <div class="vis-box"><img src="/static/plots/v4_mnar_stress.png" alt="MNAR Stress Curve" /><div class="vis-cap">MNAR Missingness Robustness (0% &rarr; 20% &rarr; 40%)</div></div>
+        <div class="vis-box"><img src="/static/plots/v4_data_distribution.png" alt="Data Distribution" /><div class="vis-cap">Data Distribution (20,175 Samples / 9,381 Patients)</div></div>
+        <div class="vis-box"><img src="/static/plots/v4_sample_images.png" alt="Sample Scans" /><div class="vis-cap">Multi-Modal Sample Scans (Test Split)</div></div>
+      </div>
+      <h2>Per-Head &amp; Per-Cohort Evaluation Breakdown</h2>
+      <table class="param-table" id="evalMetricsTable"></table>
+    </div>
+  </div>
+
+  <script>
+    let selectedDemoId = null;
+
+    async function loadInit() {
+      const [demosRes, repRes] = await Promise.all([fetch("/api/demos"), fetch("/api/report")]);
+      const demos = await demosRes.json();
+      const rep = await repRes.json();
+
+      if (rep.overall_classification) {
+        const acc = (rep.overall_classification.accuracy * 100).toFixed(2);
+        const f1 = (rep.overall_classification.macro_f1 || 0).toFixed(4);
+        const dice = (rep.segmentation?.overall?.dice?.mean || 0).toFixed(4);
+        const mnar40 = (rep.mnar_stress_curve?.["40"]?.overall?.dice?.mean || 0).toFixed(4);
+        document.getElementById("modelMetricsBadge").textContent = `PanOrgan 4 • Acc: ${acc}% • F1: ${f1} • Dice: ${dice}`;
+        document.getElementById("overallMetricsRow").innerHTML = `
+          <div class="kpi"><div class="kpi-lbl">Test Accuracy (n=${rep.overall_classification.n_samples})</div><div class="kpi-val">${acc}%</div></div>
+          <div class="kpi"><div class="kpi-lbl">Overall Macro-F1</div><div class="kpi-val">${f1}</div></div>
+          <div class="kpi"><div class="kpi-lbl">Segmentation Dice (0% MNAR)</div><div class="kpi-val">${dice}</div></div>
+          <div class="kpi"><div class="kpi-lbl">MNAR 40% Missing Dice</div><div class="kpi-val">${mnar40}</div></div>
+        `;
+        const rows = Object.entries(rep.per_task_group || {}).map(([h, v]) => `
+          <tr>
+            <td><strong>${h}</strong></td>
+            <td>n=${v.n}</td>
+            <td>Acc: <strong>${(v.accuracy * 100).toFixed(2)}%</strong></td>
+            <td>F1: <strong>${v.macro_f1.toFixed(4)}</strong></td>
+            <td>AUROC: <strong>${v.auroc.toFixed(4)}</strong></td>
+            <td>ECE: <strong>${v.ece.toFixed(4)}</strong></td>
+            <td>T=${(v.temperature || 1).toFixed(2)}, thr=${(v.decision_threshold || 0.5).toFixed(2)}</td>
+          </tr>
+        `).join("");
+        document.getElementById("evalMetricsTable").innerHTML = rows;
+      } else {
+        document.getElementById("modelMetricsBadge").textContent = "PanOrgan 4 • Live Inference Ready";
+      }
+
+      const grid = document.getElementById("demoGrid");
+      demos.forEach((d, idx) => {
+        const card = document.createElement("div");
+        card.className = "demo-card";
+        card.innerHTML = `<img src="${d.image_url}" alt="${d.title}" /><div class="demo-title">${d.title}</div><div class="demo-mod">${d.modality}</div>`;
+        card.onclick = () => selectDemo(d, card, true);
+        grid.appendChild(card);
+        if (idx === 0) selectDemo(d, card, true);
+      });
+    }
+
+    function selectDemo(demo, cardEl, autoRun = true) {
+      selectedDemoId = demo.id;
+      document.getElementById("fileInput").value = "";
+      document.querySelectorAll(".demo-card").forEach(c => c.classList.remove("active"));
+      cardEl.classList.add("active");
+      document.getElementById("cohortSelect").value = demo.id;
+      document.getElementById("modalitySelect").value = demo.modality;
+      document.getElementById("promptInput").value = demo.prompt;
+      document.getElementById("origImg").src = demo.image_url;
+      if (autoRun) runInference();
+    }
+
+    document.getElementById("fileInput").addEventListener("change", () => {
+      if (document.getElementById("fileInput").files.length > 0) {
+        selectedDemoId = null;
+        document.querySelectorAll(".demo-card").forEach(c => c.classList.remove("active"));
+      }
+    });
+
+    async function runInference() {
+      const btn = document.getElementById("runBtn");
+      const status = document.getElementById("statusNote");
+      btn.disabled = true;
+      status.textContent = "Running PanOrgan 4 inference on Apple Silicon...";
+
+      const fd = new FormData();
+      const fileInput = document.getElementById("fileInput");
+      if (fileInput.files.length > 0) {
+        fd.append("file", fileInput.files[0]);
+      } else if (selectedDemoId) {
+        fd.append("demo_id", selectedDemoId);
+      }
+      fd.append("cohort", document.getElementById("cohortSelect").value);
+      fd.append("modality", document.getElementById("modalitySelect").value);
+      fd.append("prompt", document.getElementById("promptInput").value);
+
+      try {
+        const res = await fetch("/api/predict", { method: "POST", body: fd });
+        const data = await res.json();
+        if (data.error) {
+          status.textContent = "Error: " + data.error;
+        } else {
+          const predEl = document.getElementById("predLabel");
+          predEl.textContent = data.predicted_label;
+          predEl.className = "kpi-val" + (data.disease_detected ? " warn" : "");
+          document.getElementById("trueLabel").textContent = data.true_label || "Custom Upload";
+          document.getElementById("segArea").textContent = data.seg_area_pct + "%";
+          document.getElementById("latencyVal").textContent = `${data.latency_ms} ms (${data.device})`;
+          document.getElementById("origImg").src = data.original_png;
+          document.getElementById("overlayImg").src = data.overlay_png;
+
+          document.getElementById("probsBox").innerHTML = data.probabilities.map(p => `
+            <div class="prob-row">
+              <div class="prob-head"><span>${p.label}</span><strong>${(p.prob * 100).toFixed(1)}%</strong></div>
+              <div class="bar-bg"><div class="bar-fill" style="width:${(p.prob * 100).toFixed(1)}%"></div></div>
+            </div>
+          `).join("");
+
+          document.getElementById("findingsBox").innerHTML = (data.multilabel_findings || []).map(f => `
+            <div class="prob-row">
+              <div class="prob-head"><span>${f.name}</span><strong>${(f.prob * 100).toFixed(1)}%</strong></div>
+              <div class="bar-bg"><div class="bar-fill" style="width:${(f.prob * 100).toFixed(1)}%"></div></div>
+            </div>
+          `).join("");
+
+          document.getElementById("paramsTable").innerHTML = `
+            <tr><td>Active Head</td><td><strong>${data.head_used}</strong></td></tr>
+            <tr><td>Temperature (T)</td><td><strong>${data.temperature}</strong></td></tr>
+            <tr><td>Decision Threshold</td><td><strong>${data.threshold}</strong></td></tr>
+            <tr><td>SACR Body Coords</td><td><strong>[${(data.sacr_coords || []).join(", ")}]</strong></td></tr>
+            <tr><td>Prompt Used</td><td>${data.prompt}</td></tr>
+          `;
+          status.textContent = `Completed (${data.head_used} • ${data.cohort})`;
+        }
+      } catch (err) {
+        status.textContent = "Request failed: " + err;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    loadInit();
+  </script>
+</body>
+</html>

@@ -169,8 +169,8 @@ def main() -> None:
     manifest_path = shards_dir / "master_manifest_v4_1.parquet"
     df = pd.read_parquet(manifest_path)
 
-    # Keep supervised classification cohorts (excluding prostatex_mri which has no cls labels)
-    cls_df = df[df["dataset"].isin(COHORT_HEAD_MAP.keys()) & (df["label"] >= 0)].reset_index(drop=True)
+    # Keep supervised classification cohorts (excluding prostatex_mri whose tar JSON has label=-1)
+    cls_df = df[df["dataset"].isin(COHORT_HEAD_MAP.keys()) & (df["dataset"] != "prostatex_mri") & (df["label"] >= 0)].reset_index(drop=True)
     train_df = cls_df[cls_df["split"] == "train"].reset_index(drop=True)
     val_df = cls_df[cls_df["split"] == "val"].reset_index(drop=True)
     test_df = cls_df[cls_df["split"] == "test"].reset_index(drop=True)
@@ -179,14 +179,15 @@ def main() -> None:
 
     mod_map = {k: int(v["id"]) for k, v in cfg["modalities"].items()}
     cache_mgr = ShardCacheManager(shards_dir, shards_dir, max_cache_gb=100.0)
-    train_ds = PanOrganShardDataset(train_df, cache_mgr, mod_map, target_hw=(256, 256), augment=True)
-    val_ds = PanOrganShardDataset(val_df, cache_mgr, mod_map, target_hw=(256, 256), augment=False)
-    test_ds = PanOrganShardDataset(test_df, cache_mgr, mod_map, target_hw=(256, 256), augment=False)
+    train_ds = PanOrganShardDataset(train_df, cache_mgr, mod_map, target_hw=(384, 384), augment=True)
+    val_ds = PanOrganShardDataset(val_df, cache_mgr, mod_map, target_hw=(384, 384), augment=False)
+    test_ds = PanOrganShardDataset(test_df, cache_mgr, mod_map, target_hw=(384, 384), augment=False)
 
-    sampler = BalancedModalityBatchSampler(train_df["dataset"].tolist(), batch_size=16, temperature_alpha=0.25)
+    strat_keys = train_df.apply(lambda r: f"{r['dataset']}_c{int(r['label'])}", axis=1).tolist()
+    sampler = BalancedModalityBatchSampler(strat_keys, batch_size=8, temperature_alpha=0.15)
     train_loader = DataLoader(train_ds, batch_sampler=sampler, num_workers=0)
-    val_loader = DataLoader(val_ds, batch_size=24, shuffle=False, num_workers=0)
-    test_loader = DataLoader(test_ds, batch_size=24, shuffle=False, num_workers=0)
+    val_loader = DataLoader(val_ds, batch_size=16, shuffle=False, num_workers=0)
+    test_loader = DataLoader(test_ds, batch_size=16, shuffle=False, num_workers=0)
 
     # Class weights per head
     cw_map: Dict[str, torch.Tensor] = {}
@@ -196,7 +197,7 @@ def main() -> None:
         sub = sub[(sub >= 0) & (sub < n_cls)]
         counts = np.bincount(sub, minlength=n_cls).astype(np.float32) if len(sub) > 0 else np.ones(n_cls, dtype=np.float32)
         counts = np.maximum(counts, 1.0)
-        w = (counts.sum() / counts) ** 0.5
+        w = (counts.sum() / counts) ** 0.75
         w = w / w.mean()
         cw_map[hname] = torch.tensor(w, dtype=torch.float32, device=device)
 
@@ -248,7 +249,7 @@ def main() -> None:
         for batch in train_loader:
             images = batch["image"].to(device)
             meta_vec = batch["meta_vec"].to(device)
-            is_3d = batch["is_3d"].to(device)
+            is_3d = torch.zeros_like(batch["is_3d"]).to(device)
             labels = batch["label"].to(device)
             datasets = batch["dataset"]
 
@@ -274,19 +275,24 @@ def main() -> None:
                 if lbl < 0 or lbl >= n_cls:
                     continue
                 lg = out["head_logits"][hname][i : i + 1]
-                ce = F.cross_entropy(lg, labels[i : i + 1], weight=cw_map[hname], label_smoothing=0.05)
+                pt = F.softmax(lg.detach(), dim=-1).gather(1, labels[i : i + 1].unsqueeze(1)).squeeze(1).clamp(1e-6, 1.0)
+                ce = ((1.0 - pt) ** 1.5 * F.cross_entropy(lg, labels[i : i + 1], weight=cw_map[hname], label_smoothing=0.08, reduction="none")).mean()
                 if use_mix and perm is not None and datasets[int(perm[i])] == ds:
                     lbl2 = int(labels[perm[i]].item())
                     if 0 <= lbl2 < n_cls:
-                        ce2 = F.cross_entropy(lg, labels[perm[i] : perm[i] + 1], weight=cw_map[hname], label_smoothing=0.05)
+                        pt2 = F.softmax(lg.detach(), dim=-1).gather(1, labels[perm[i] : perm[i] + 1].unsqueeze(1)).squeeze(1).clamp(1e-6, 1.0)
+                        ce2 = ((1.0 - pt2) ** 1.5 * F.cross_entropy(lg, labels[perm[i] : perm[i] + 1], weight=cw_map[hname], label_smoothing=0.08, reduction="none")).mean()
                         ce = lam * ce + (1.0 - lam) * ce2
                 losses.append(ce)
 
             if not losses:
                 continue
             loss = torch.stack(losses).mean()
+            if not torch.isfinite(loss):
+                optimizer.zero_grad()
+                continue
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 0.5)
             optimizer.step()
             scheduler.step()
 

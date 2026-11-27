@@ -199,43 +199,72 @@ def build_cbis_ddsm(rng: np.random.Generator) -> List[Dict[str, Any]]:
     return balanced
 
 
+def _num_key(p: Path) -> int:
+    import re
+    m = re.search(r"\((\d+)\)", p.name)
+    return int(m.group(1)) if m else 0
+
+
 def build_kidney_ct(rng: np.random.Generator) -> List[Dict[str, Any]]:
+    """Split contiguous numerically-ordered CT slices with a 25-slice buffer gap
+    between train/val/test blocks to prevent same-patient adjacent-slice leakage.
+    """
     base = _EXT_DL / "ct_kidney_kaggle" / "CT-KIDNEY-DATASET-Normal-Cyst-Tumor-Stone" / "CT-KIDNEY-DATASET-Normal-Cyst-Tumor-Stone"
-    normals = sorted((base / "Normal").glob("*.jpg"))
-    cysts = sorted((base / "Cyst").glob("*.jpg"))
-    tumors = sorted((base / "Tumor").glob("*.jpg"))
-    stones = sorted((base / "Stone").glob("*.jpg"))
+    normals = sorted((base / "Normal").glob("*.jpg"), key=_num_key)
+    cysts = sorted((base / "Cyst").glob("*.jpg"), key=_num_key)
+    tumors = sorted((base / "Tumor").glob("*.jpg"), key=_num_key)
+    stones = sorted((base / "Stone").glob("*.jpg"), key=_num_key)
 
-    rng.shuffle(normals)
-    rng.shuffle(cysts)
-    rng.shuffle(tumors)
-    rng.shuffle(stones)
-
-    # Balanced abnormal: 1377 Stone + 1700 Tumor + 1700 Cyst = 4777; take 4777 Normal -> 9554 total (50/50)
-    abn_paths = stones[:1377] + tumors[:1700] + cysts[:1700]
-    norm_paths = normals[: len(abn_paths)]
-    rng.shuffle(abn_paths)
-    rng.shuffle(norm_paths)
-
-    records: List[Dict[str, Any]] = []
-    for lbl, plist in [(0, norm_paths), (1, abn_paths)]:
+    def split_contiguous(plist: List[Path], cls_name: str, lbl: int, cap: int | None = None) -> List[Dict[str, Any]]:
+        if cap is not None:
+            plist = plist[:cap]
         n = len(plist)
-        n_tr = int(0.70 * n)
-        n_va = int(0.15 * n)
+        buf = 25
+        tr_end = int(0.70 * n)
+        va_start = min(n, tr_end + buf)
+        va_end = min(n, va_start + int(0.15 * n))
+        te_start = min(n, va_end + buf)
+        out = []
         for i, p in enumerate(plist):
-            sp = "train" if i < n_tr else ("val" if i < n_tr + n_va else "test")
-            records.append({
-                "patient_id": f"kct_{lbl}_{i:05d}",
+            if i < tr_end:
+                sp = "train"
+            elif va_start <= i < va_end:
+                sp = "val"
+            elif i >= te_start:
+                sp = "test"
+            else:
+                continue  # boundary buffer slice skipped to prevent patient overlap
+            out.append({
+                "patient_id": f"kct_{cls_name}_{sp}_{i // 50:03d}",
                 "split": sp,
                 "label": lbl,
                 "img_path": p,
-                "sample_id": f"kct_v41_{lbl}_{i:05d}",
+                "sample_id": f"kct_v41_{cls_name}_{i:05d}",
                 "modality": "CT",
                 "specialty": "nephrology",
                 "prompt": "classify kidney CT scan as normal or abnormal (cyst, tumor, or stone)",
             })
+        return out
+
+    abn_recs = (
+        split_contiguous(stones, "stone", 1, 1377)
+        + split_contiguous(tumors, "tumor", 1, 1700)
+        + split_contiguous(cysts, "cyst", 1, 1700)
+    )
+    norm_recs = split_contiguous(normals, "normal", 0, 4777)
+
+    # Balance 50/50 per split
+    records: List[Dict[str, Any]] = []
+    for sp in ["train", "val", "test"]:
+        r0 = [r for r in norm_recs if r["split"] == sp]
+        r1 = [r for r in abn_recs if r["split"] == sp]
+        m = min(len(r0), len(r1))
+        rng.shuffle(r0)
+        rng.shuffle(r1)
+        records.extend(r0[:m])
+        records.extend(r1[:m])
     rng.shuffle(records)
-    log_msg(f"Kidney CT prepared: total={len(records)} balanced 50/50 samples")
+    log_msg(f"Kidney CT prepared (contiguous leak-free blocks): total={len(records)} balanced 50/50 samples")
     return records
 
 
